@@ -33,8 +33,6 @@ name: build-and-test-differential
         required: false
 
 env:
-  CC: /usr/lib/ccache/gcc
-  CXX: /usr/lib/ccache/g++
   CCACHE_DIR: /root/.ccache
 
 jobs:
@@ -48,6 +46,18 @@ jobs:
           echo "PR_FETCH_DEPTH=$(( ${{
           github.event.pull_request.commits || 1 }} + 1 ))"
           >> "${GITHUB_ENV}"
+        shell: bash
+
+      - name: Setup ccache environment
+        run: |
+          echo "CCACHE_DIR=/root/.ccache" >> "${GITHUB_ENV}"
+          if command -v ccache &> /dev/null; then
+            echo "CC=/usr/lib/ccache/gcc" >> "${GITHUB_ENV}"
+            echo "CXX=/usr/lib/ccache/g++" >> "${GITHUB_ENV}"
+            echo "ccache is available, enabling ccache"
+          else
+            echo "ccache is not available, using default compilers"
+          fi
         shell: bash
 
       - name: Checkout PR branch and all PR commits
@@ -81,13 +91,22 @@ jobs:
         id: get-modified-packages
         uses: autowarefoundation/autoware-github-actions/get-modified-packages@v1 # yamllint disable-line rule:line-length
 
-      - name: Create ccache directory
+      - name: Create ccache directory and check availability
         run: |
           mkdir -p ${CCACHE_DIR}
-          du -sh ${CCACHE_DIR} && ccache -s
+          if command -v ccache &> /dev/null; then
+            echo "ccache is available"
+            du -sh ${CCACHE_DIR} && ccache -s
+            echo "CCACHE_AVAILABLE=true" >> "${GITHUB_ENV}"
+          else
+            echo "ccache is not available, skipping ccache setup"
+            du -sh ${CCACHE_DIR}
+            echo "CCACHE_AVAILABLE=false" >> "${GITHUB_ENV}"
+          fi
         shell: bash
 
-      - name: Attempt to restore ccache
+      - name: Restore ccache
+        if: ${{ env.CCACHE_AVAILABLE == 'true' }}
         uses: actions/cache/restore@v4
         with:
           path: |
@@ -100,8 +119,12 @@ jobs:
 
       - name: Show ccache stats before build and reset stats
         run: |
-          du -sh ${CCACHE_DIR} && ccache -s
-          ccache --zero-stats
+          if [[ "${CCACHE_AVAILABLE}" == "true" ]]; then
+            du -sh ${CCACHE_DIR} && ccache -s
+            ccache --zero-stats
+          else
+            echo "ccache is not available, skipping ccache stats"
+          fi
         shell: bash
 
       - name: Export CUDA state as a variable for adding to cache key
@@ -147,7 +170,12 @@ jobs:
             ${{ inputs.build-pre-command }}
 
       - name: Show ccache stats after build
-        run: du -sh ${CCACHE_DIR} && ccache -s
+        run: |
+          if [[ "${CCACHE_AVAILABLE}" == "true" ]]; then
+            du -sh ${CCACHE_DIR} && ccache -s
+          else
+            echo "ccache is not available, skipping ccache stats"
+          fi
         shell: bash
 
       - name: Test autoware_tensorrt_vad
