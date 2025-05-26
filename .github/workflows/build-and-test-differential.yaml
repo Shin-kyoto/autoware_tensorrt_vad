@@ -221,6 +221,9 @@ jobs:
             build-essential \
             gcc \
             g++ \
+            gcc-multilib \
+            g++-multilib \
+            cpp \
             cmake \
             make \
             libc6-dev \
@@ -229,15 +232,20 @@ jobs:
             ros-${{ inputs.rosdistro }}-ament-cmake-core \
             ros-${{ inputs.rosdistro }}-ament-lint-auto \
             ros-${{ inputs.rosdistro }}-ament-lint-common
-          # Verify compiler installation
+          # Verify compiler installation and PATH
           echo "Checking compiler installation..."
           which gcc || echo "gcc not found"
           which g++ || echo "g++ not found"
           gcc --version || echo "gcc version check failed"
-          # Set explicit compiler paths
+          echo "PATH: $PATH"
+          # Check for cc1 specifically
+          find /usr -name "cc1" 2>/dev/null || echo "cc1 not found"
+          # Set explicit compiler paths and ensure PATH includes gcc libexec
           export CC=/usr/bin/gcc
           export CXX=/usr/bin/g++
+          export PATH="/usr/lib/gcc/x86_64-linux-gnu/11:$PATH"
           echo "CC=${CC}, CXX=${CXX}"
+          echo "Updated PATH: $PATH"
           # Import build_depends repositories
           if [ -f build_depends.repos ]; then
             mkdir -p dependency_ws/src
