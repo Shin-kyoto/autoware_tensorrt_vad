@@ -164,8 +164,8 @@ jobs:
           echo "Attempting rosdep update with retry logic..."
           for i in {1..3}; do
             echo "Attempt $i of 3"
-            rosdep_cmd="DEBIAN_FRONTEND=noninteractive rosdep update"
-            if ${rosdep_cmd} --include-eol-distros; then
+            rosdep_update_cmd="rosdep update --include-eol-distros"
+            if DEBIAN_FRONTEND=noninteractive ${rosdep_update_cmd}; then
               echo "rosdep update succeeded"
               break
             else
@@ -176,8 +176,6 @@ jobs:
                 apt-get update
                 apt-get install -y \
                   libeigen3-dev \
-                  libcuda-dev \
-                  libnvinfer-dev \
                   libstb-dev \
                   nlohmann-json3-dev \
                   ros-${{ inputs.rosdistro }}-geometry-msgs \
@@ -188,6 +186,10 @@ jobs:
                   ros-${{ inputs.rosdistro }}-rclcpp \
                   ros-${{ inputs.rosdistro }}-rosbag2-cpp \
                   ros-${{ inputs.rosdistro }}-eigen3-cmake-module
+                # CUDA packages are optional and may not be available
+                cuda_msg="CUDA packages not available, continuing without them"
+                apt-get install -y libcuda-dev libnvinfer-dev || \
+                  echo "${cuda_msg}"
                 break
               fi
               sleep $((i * 10))  # Wait between attempts
