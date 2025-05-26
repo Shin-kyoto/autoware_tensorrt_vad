@@ -75,13 +75,13 @@ jobs:
         shell: bash
 
       - name: Remove exec_depend
-        uses: >
-          autowarefoundation/autoware-github-actions/remove-exec-depend@v1
+        # yamllint disable-line rule:line-length
+        uses: autowarefoundation/autoware-github-actions/remove-exec-depend@v1
 
       - name: Get modified packages
         id: get-modified-packages
-        uses: >
-          autowarefoundation/autoware-github-actions/get-modified-packages@v1
+        # yamllint disable-line rule:line-length
+        uses: autowarefoundation/autoware-github-actions/get-modified-packages@v1
 
       - name: Create ccache directory
         run: |
@@ -136,8 +136,8 @@ jobs:
         if: >
           ${{ steps.get-modified-packages.outputs.modified-packages != ''
           || github.event_name == 'push' }}
-        uses: >
-          autowarefoundation/autoware-github-actions/colcon-build@v1
+        # yamllint disable-line rule:line-length
+        uses: autowarefoundation/autoware-github-actions/colcon-build@v1
         with:
           rosdistro: ${{ inputs.rosdistro }}
           target-packages: >
@@ -158,8 +158,8 @@ jobs:
         if: >
           ${{ steps.get-modified-packages.outputs.modified-packages != ''
           || github.event_name == 'push' }}
-        uses: >
-          autowarefoundation/autoware-github-actions/colcon-test@v1
+        # yamllint disable-line rule:line-length
+        uses: autowarefoundation/autoware-github-actions/colcon-test@v1
         with:
           rosdistro: ${{ inputs.rosdistro }}
           target-packages: >

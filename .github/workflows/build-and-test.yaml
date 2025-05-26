@@ -20,8 +20,8 @@ jobs:
     if: >
       ${{ github.event_name != 'workflow_dispatch'
       || !inputs.skip_label_check }}
-    uses: >
-      autowarefoundation/autoware-github-actions/.github/workflows/prevent-no-label-execution.yaml@v1
+    # yamllint disable-line rule:line-length
+    uses: autowarefoundation/autoware-github-actions/.github/workflows/prevent-no-label-execution.yaml@v1
     with:
       label: tag:run-build-and-test
 
