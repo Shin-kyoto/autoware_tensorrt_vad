@@ -164,7 +164,7 @@ jobs:
           apt-get remove -y gcc g++ cpp gcc-11 g++-11 cpp-11 || true
           apt-get autoremove -y || true
 
-          # Clean install of essential build tools
+          # Clean install of essential build tools with all necessary components
           apt-get install -y \
             build-essential \
             cmake \
@@ -173,7 +173,12 @@ jobs:
             linux-libc-dev \
             binutils \
             gcc-multilib \
-            g++-multilib
+            g++-multilib \
+            libc6-dev-i386 \
+            lib32gcc-s1 \
+            lib32stdc++6 \
+            libgcc-s1 \
+            libstdc++6
 
           # Install vcs if not available
           if ! command -v vcs &> /dev/null; then
@@ -244,13 +249,15 @@ jobs:
           # Fix compiler installation completely
           echo "Setting up compiler environment..."
 
-          # Remove any broken compiler installations
-          apt-get remove -y gcc g++ cpp gcc-11 g++-11 cpp-11 || true
-          apt-get autoremove -y || true
-
-          # Clean install of build-essential and gcc
-          apt-get update
-          apt-get install -y build-essential
+          # Ensure all GCC components are properly installed
+          apt-get install -y \
+            gcc \
+            g++ \
+            cpp \
+            libgcc-s1 \
+            libstdc++6 \
+            libc6-dev \
+            linux-libc-dev
 
           # Verify installation
           export CC=/usr/bin/gcc
@@ -293,7 +300,31 @@ jobs:
               rm -f test2.c test2.o
             fi
           fi
-          rm -f test.c test.o
+
+          # Test linking capability
+          echo "Testing linker..."
+          echo 'int main(){return 0;}' > link_test.c
+          if ! $CC link_test.c -o link_test 2>/dev/null; then
+            echo "Linker test failed, checking libraries..."
+
+            # Check for missing libraries
+            crtbegin_msg="crtbeginS.o not found"
+            find /usr -name "crtbeginS.o" 2>/dev/null || echo "${crtbegin_msg}"
+            libgcc_msg="libgcc.a not found"
+            find /usr -name "libgcc.a" 2>/dev/null || echo "${libgcc_msg}"
+            libgcc_s_msg="libgcc_s.so not found"
+            find /usr -name "libgcc_s.so*" 2>/dev/null || echo "${libgcc_s_msg}"
+
+            # Install additional GCC libraries
+            apt-get install -y \
+              gcc-11-base \
+              libgcc-11-dev \
+              libstdc++-11-dev
+
+            # Test linking again
+            $CC -v link_test.c -o link_test || echo "Linking still failed"
+          fi
+          rm -f test.c test.o link_test.c link_test
 
           echo "Final compiler setup: CC=${CC}, CXX=${CXX}"
           $CC --version
