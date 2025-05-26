@@ -257,7 +257,13 @@ jobs:
             libgcc-s1 \
             libstdc++6 \
             libc6-dev \
-            linux-libc-dev
+            linux-libc-dev \
+            gcc-11 \
+            g++-11 \
+            cpp-11 \
+            gcc-11-base \
+            libgcc-11-dev \
+            libstdc++-11-dev
 
           # Verify installation
           export CC=/usr/bin/gcc
@@ -321,8 +327,77 @@ jobs:
               libgcc-11-dev \
               libstdc++-11-dev
 
-            # Test linking again
-            $CC -v link_test.c -o link_test || echo "Linking still failed"
+            # Fix missing crtbeginS.o in the main gcc directory
+            gcc_lib_dir="/usr/lib/gcc/x86_64-linux-gnu/11"
+            if [ ! -f "${gcc_lib_dir}/crtbeginS.o" ]; then
+              echo "Creating symlink for crtbeginS.o"
+              crtbegin_rel_path="../../../x86_64-linux-gnu/crtbeginS.o"
+              crtbegin_abs_path="/usr/lib/x86_64-linux-gnu/crtbeginS.o"
+              if [ -f "${gcc_lib_dir}/${crtbegin_rel_path}" ]; then
+                ln -sf "${crtbegin_rel_path}" "${gcc_lib_dir}/crtbeginS.o"
+              elif [ -f "${crtbegin_abs_path}" ]; then
+                ln -sf "${crtbegin_abs_path}" "${gcc_lib_dir}/crtbeginS.o"
+              fi
+            fi
+
+            # Fix missing crtendS.o
+            if [ ! -f "${gcc_lib_dir}/crtendS.o" ]; then
+              echo "Creating symlink for crtendS.o"
+              crtend_rel_path="../../../x86_64-linux-gnu/crtendS.o"
+              crtend_abs_path="/usr/lib/x86_64-linux-gnu/crtendS.o"
+              if [ -f "${gcc_lib_dir}/${crtend_rel_path}" ]; then
+                ln -sf "${crtend_rel_path}" "${gcc_lib_dir}/crtendS.o"
+              elif [ -f "${crtend_abs_path}" ]; then
+                ln -sf "${crtend_abs_path}" "${gcc_lib_dir}/crtendS.o"
+              fi
+            fi
+
+            # Fix missing libgcc.a
+            if [ ! -f "${gcc_lib_dir}/libgcc.a" ]; then
+              echo "Creating symlink for libgcc.a"
+              if [ -f "${gcc_lib_dir}/32/libgcc.a" ]; then
+                # Use the 32-bit version as fallback, but this is not ideal
+                echo "Warning: Using 32-bit libgcc.a as fallback"
+              fi
+              # Try to find the correct 64-bit version
+              find_cmd="find /usr -name \"libgcc.a\""
+              path_filter="*/x86_64-linux-gnu/*"
+              path_cmd="${find_cmd} -path \"${path_filter}\""
+              filter_32="-not -path \"*/32/*\""
+              filter_x32="-not -path \"*/x32/*\""
+              filter_cmd="${path_cmd} ${filter_32}"
+              final_cmd="${filter_cmd} ${filter_x32}"
+              eval "${final_cmd} 2>/dev/null" | head -1 | \
+                while read libgcc_path; do
+                if [ -n "$libgcc_path" ]; then
+                  ln -sf "$libgcc_path" "${gcc_lib_dir}/libgcc.a"
+                fi
+              done
+            fi
+
+            # Fix missing libgcc_s.so
+            if [ ! -f "${gcc_lib_dir}/libgcc_s.so" ]; then
+              echo "Creating symlink for libgcc_s.so"
+              libgcc_s_path="/usr/lib/x86_64-linux-gnu/libgcc_s.so.1"
+              if [ -f "${libgcc_s_path}" ]; then
+                ln -sf "${libgcc_s_path}" "${gcc_lib_dir}/libgcc_s.so"
+              fi
+            fi
+
+            # Test linking again with verbose output
+            echo "Testing linking again..."
+            $CC -v link_test.c -o link_test 2>&1 || echo "Linking still failed"
+
+            # If still failing, try with explicit library paths
+            if [ ! -f link_test ]; then
+              echo "Trying with explicit library paths..."
+              explicit_link_cmd="$CC link_test.c -o link_test"
+              gcc_lib_path="-L/usr/lib/gcc/x86_64-linux-gnu/11"
+              x86_lib_path="-L/usr/lib/x86_64-linux-gnu"
+              explicit_link_args="${gcc_lib_path} ${x86_lib_path} -Wl,--verbose"
+              ${explicit_link_cmd} ${explicit_link_args} 2>&1 || \
+                echo "Explicit path linking failed"
+            fi
           fi
           rm -f test.c test.o link_test.c link_test
 
