@@ -75,13 +75,11 @@ jobs:
         shell: bash
 
       - name: Remove exec_depend
-        # yamllint disable-line rule:line-length
-        uses: autowarefoundation/autoware-github-actions/remove-exec-depend@v1
+        uses: autowarefoundation/autoware-github-actions/remove-exec-depend@v1 # yamllint disable-line rule:line-length
 
       - name: Get modified packages
         id: get-modified-packages
-        # yamllint disable-line rule:line-length
-        uses: autowarefoundation/autoware-github-actions/get-modified-packages@v1
+        uses: autowarefoundation/autoware-github-actions/get-modified-packages@v1 # yamllint disable-line rule:line-length
 
       - name: Create ccache directory
         run: |
@@ -136,8 +134,7 @@ jobs:
         if: >
           ${{ steps.get-modified-packages.outputs.modified-packages != ''
           || github.event_name == 'push' }}
-        # yamllint disable-line rule:line-length
-        uses: autowarefoundation/autoware-github-actions/colcon-build@v1
+        uses: autowarefoundation/autoware-github-actions/colcon-build@v1 # yamllint disable-line rule:line-length
         with:
           rosdistro: ${{ inputs.rosdistro }}
           target-packages: >
@@ -158,8 +155,7 @@ jobs:
         if: >
           ${{ steps.get-modified-packages.outputs.modified-packages != ''
           || github.event_name == 'push' }}
-        # yamllint disable-line rule:line-length
-        uses: autowarefoundation/autoware-github-actions/colcon-test@v1
+        uses: autowarefoundation/autoware-github-actions/colcon-test@v1 # yamllint disable-line rule:line-length
         with:
           rosdistro: ${{ inputs.rosdistro }}
           target-packages: >
@@ -168,9 +164,7 @@ jobs:
           build-depends-repos: build_depends.repos
 
       - name: Upload coverage to CodeCov
-        if: >
-          ${{ steps.test.outputs.coverage-report-files != ''
-          && secrets.codecov-token != '' }}
+        if: ${{ steps.test.outputs.coverage-report-files != '' }}
         uses: codecov/codecov-action@v4
         with:
           files: ${{ steps.test.outputs.coverage-report-files }}
