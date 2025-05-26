@@ -310,11 +310,11 @@ jobs:
 
             # Check for missing libraries
             crtbegin_msg="crtbeginS.o not found"
-            find /usr -name "crtbeginS.o" 2>/dev/null || echo "${crtbegin_msg}"
+            find /usr -name "crtbeginS.o" -type f 2>/dev/null || echo "${crtbegin_msg}"
             libgcc_msg="libgcc.a not found"
-            find /usr -name "libgcc.a" 2>/dev/null || echo "${libgcc_msg}"
+            find /usr -name "libgcc.a" -type f 2>/dev/null || echo "${libgcc_msg}"
             libgcc_s_msg="libgcc_s.so not found"
-            find /usr -name "libgcc_s.so*" 2>/dev/null || echo "${libgcc_s_msg}"
+            find /usr -name "libgcc_s.so*" -type f 2>/dev/null || echo "${libgcc_s_msg}"
 
             # Install additional GCC libraries
             apt-get install -y \
@@ -330,52 +330,73 @@ jobs:
             # Create missing crtbeginS.o
             if [ ! -f "${gcc_lib_dir}/crtbeginS.o" ]; then
               echo "Creating crtbeginS.o"
-              # Try to find any crtbeginS.o and copy it
-              crtbegin_source=$(find /usr -name "crtbeginS.o" -type f 2>/dev/null | head -1)
-              if [ -n "$crtbegin_source" ]; then
-                cp "$crtbegin_source" "${gcc_lib_dir}/crtbeginS.o"
-                echo "Copied crtbeginS.o from $crtbegin_source"
+              # Try to find 64-bit crtbeginS.o first, avoiding 32-bit versions
+              crtbegin_64bit=$(find /usr -name "crtbeginS.o" -type f -not -path "*/32/*" -not -path "*/x32/*" 2>/dev/null | head -1)
+              if [ -n "$crtbegin_64bit" ]; then
+                cp "$crtbegin_64bit" "${gcc_lib_dir}/crtbeginS.o"
+                echo "Copied 64-bit crtbeginS.o from $crtbegin_64bit"
               else
-                # Create a minimal crtbeginS.o if none found
-                echo "Creating minimal crtbeginS.o"
-                echo 'void _init(void) {}' > /tmp/crtbegin.c
-                $CC -c /tmp/crtbegin.c -o "${gcc_lib_dir}/crtbeginS.o"
+                # Try to find any crtbeginS.o and copy it
+                crtbegin_source=$(find /usr -name "crtbeginS.o" -type f 2>/dev/null | head -1)
+                if [ -n "$crtbegin_source" ]; then
+                  cp "$crtbegin_source" "${gcc_lib_dir}/crtbeginS.o"
+                  echo "Copied crtbeginS.o from $crtbegin_source"
+                else
+                  # Create a minimal crtbeginS.o if none found
+                  echo "Creating minimal crtbeginS.o"
+                  echo 'void _init(void) {}' > /tmp/crtbegin.c
+                  $CC -c /tmp/crtbegin.c -o "${gcc_lib_dir}/crtbeginS.o"
+                fi
               fi
             fi
 
             # Create missing crtendS.o
             if [ ! -f "${gcc_lib_dir}/crtendS.o" ]; then
               echo "Creating crtendS.o"
-              crtend_source=$(find /usr -name "crtendS.o" -type f 2>/dev/null | head -1)
-              if [ -n "$crtend_source" ]; then
-                cp "$crtend_source" "${gcc_lib_dir}/crtendS.o"
-                echo "Copied crtendS.o from $crtend_source"
+              # Try to find 64-bit crtendS.o first, avoiding 32-bit versions
+              crtend_64bit=$(find /usr -name "crtendS.o" -type f -not -path "*/32/*" -not -path "*/x32/*" 2>/dev/null | head -1)
+              if [ -n "$crtend_64bit" ]; then
+                cp "$crtend_64bit" "${gcc_lib_dir}/crtendS.o"
+                echo "Copied 64-bit crtendS.o from $crtend_64bit"
               else
-                # Create a minimal crtendS.o if none found
-                echo "Creating minimal crtendS.o"
-                echo 'void _fini(void) {}' > /tmp/crtend.c
-                $CC -c /tmp/crtend.c -o "${gcc_lib_dir}/crtendS.o"
+                crtend_source=$(find /usr -name "crtendS.o" -type f 2>/dev/null | head -1)
+                if [ -n "$crtend_source" ]; then
+                  cp "$crtend_source" "${gcc_lib_dir}/crtendS.o"
+                  echo "Copied crtendS.o from $crtend_source"
+                else
+                  # Create a minimal crtendS.o if none found
+                  echo "Creating minimal crtendS.o"
+                  echo 'void _fini(void) {}' > /tmp/crtend.c
+                  $CC -c /tmp/crtend.c -o "${gcc_lib_dir}/crtendS.o"
+                fi
               fi
             fi
 
             # Create missing libgcc.a
             if [ ! -f "${gcc_lib_dir}/libgcc.a" ]; then
               echo "Creating libgcc.a"
-              # Try any libgcc.a as fallback
-              libgcc_any=$(find /usr -name "libgcc.a" -type f 2>/dev/null | head -1)
-              if [ -n "$libgcc_any" ]; then
-                cp "$libgcc_any" "${gcc_lib_dir}/libgcc.a"
-                echo "Copied libgcc.a from $libgcc_any (fallback)"
+              # Try to find 64-bit libgcc.a first, avoiding 32-bit versions
+              libgcc_64bit=$(find /usr -name "libgcc.a" -type f -not -path "*/32/*" -not -path "*/x32/*" 2>/dev/null | head -1)
+              if [ -n "$libgcc_64bit" ]; then
+                cp "$libgcc_64bit" "${gcc_lib_dir}/libgcc.a"
+                echo "Copied 64-bit libgcc.a from $libgcc_64bit"
               else
-                # Create a minimal libgcc.a if none found
-                echo "Creating minimal libgcc.a"
-                if command -v ar &> /dev/null; then
-                  echo 'void __gcc_personality_v0(void) {}' > /tmp/libgcc.c
-                  $CC -c /tmp/libgcc.c -o /tmp/libgcc.o
-                  ar rcs "${gcc_lib_dir}/libgcc.a" /tmp/libgcc.o
-                  echo "Created minimal libgcc.a successfully"
+                # Try any libgcc.a as fallback
+                libgcc_any=$(find /usr -name "libgcc.a" -type f 2>/dev/null | head -1)
+                if [ -n "$libgcc_any" ]; then
+                  cp "$libgcc_any" "${gcc_lib_dir}/libgcc.a"
+                  echo "Copied libgcc.a from $libgcc_any (fallback)"
                 else
-                  echo "ar command not found, cannot create libgcc.a"
+                  # Create a minimal libgcc.a if none found
+                  echo "Creating minimal libgcc.a"
+                  if command -v ar &> /dev/null; then
+                    echo 'void __gcc_personality_v0(void) {}' > /tmp/libgcc.c
+                    $CC -c /tmp/libgcc.c -o /tmp/libgcc.o
+                    ar rcs "${gcc_lib_dir}/libgcc.a" /tmp/libgcc.o
+                    echo "Created minimal libgcc.a successfully"
+                  else
+                    echo "ar command not found, cannot create libgcc.a"
+                  fi
                 fi
               fi
             fi
