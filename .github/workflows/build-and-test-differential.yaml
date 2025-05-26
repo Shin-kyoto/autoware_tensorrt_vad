@@ -156,17 +156,24 @@ jobs:
             . /setup.sh
           fi
 
-          # Install essential build tools first
-          apt-get update && apt-get install -y \
+          # Install essential build tools first with proper cleanup
+          echo "Installing build tools..."
+          apt-get update
+
+          # Remove any potentially broken compiler installations
+          apt-get remove -y gcc g++ cpp gcc-11 g++-11 cpp-11 || true
+          apt-get autoremove -y || true
+
+          # Clean install of essential build tools
+          apt-get install -y \
             build-essential \
-            gcc \
-            g++ \
-            cpp \
             cmake \
             make \
             libc6-dev \
             linux-libc-dev \
-            binutils
+            binutils \
+            gcc-multilib \
+            g++-multilib
 
           # Install vcs if not available
           if ! command -v vcs &> /dev/null; then
@@ -234,8 +241,18 @@ jobs:
             ros-${{ inputs.rosdistro }}-ament-lint-auto \
             ros-${{ inputs.rosdistro }}-ament-lint-common
 
-          # Set up compiler environment (use already installed compilers)
+          # Fix compiler installation completely
           echo "Setting up compiler environment..."
+
+          # Remove any broken compiler installations
+          apt-get remove -y gcc g++ cpp gcc-11 g++-11 cpp-11 || true
+          apt-get autoremove -y || true
+
+          # Clean install of build-essential and gcc
+          apt-get update
+          apt-get install -y build-essential
+
+          # Verify installation
           export CC=/usr/bin/gcc
           export CXX=/usr/bin/g++
 
@@ -243,18 +260,37 @@ jobs:
           echo "Testing compiler..."
           echo 'int main(){return 0;}' > test.c
           if ! $CC -c test.c -o test.o 2>/dev/null; then
-            echo "Default compiler failed, checking alternatives..."
-            # Check if gcc-11 is available
-            if [ -f /usr/bin/gcc-11 ]; then
-              echo "Using gcc-11..."
-              export CC=/usr/bin/gcc-11
-              export CXX=/usr/bin/g++-11
-            else
-              echo "Reinstalling build-essential..."
-              reinstall_cmd="apt-get install -y --reinstall"
-              ${reinstall_cmd} build-essential gcc g++ cpp
-              export CC=/usr/bin/gcc
-              export CXX=/usr/bin/g++
+            echo "Compiler test failed, trying alternative approach..."
+
+            # Try installing specific gcc version with all components
+            apt-get install -y gcc-11 g++-11 cpp-11 gcc-11-base
+
+            # Set up alternatives
+            update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 100
+            update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 100
+            update-alternatives --install /usr/bin/cpp cpp /usr/bin/cpp-11 100
+
+            export CC=/usr/bin/gcc
+            export CXX=/usr/bin/g++
+
+            # Test again
+            if ! $CC -c test.c -o test.o 2>/dev/null; then
+              echo "Still failing, checking system..."
+              which gcc
+              which g++
+              ls -la /usr/bin/gcc*
+              ls -la /usr/lib/gcc/
+
+              # Try to find and fix cc1
+              find /usr -name "cc1" -type f 2>/dev/null || echo "cc1 not found"
+
+              # Install gcc multilib which includes cc1
+              apt-get install -y gcc-multilib g++-multilib
+
+              # Final test
+              echo 'int main(){return 0;}' > test2.c
+              $CC -v -c test2.c -o test2.o || echo "Final test failed"
+              rm -f test2.c test2.o
             fi
           fi
           rm -f test.c test.o
@@ -278,6 +314,7 @@ jobs:
                 -DCMAKE_BUILD_TYPE=Release \
                 -DCMAKE_C_COMPILER=${CC} \
                 -DCMAKE_CXX_COMPILER=${CXX} \
+                -DCMAKE_VERBOSE_MAKEFILE=ON \
               --packages-up-to autoware_cmake autoware_msgs
             source install/setup.bash
             cd ..
@@ -289,6 +326,7 @@ jobs:
               -DCMAKE_BUILD_TYPE=Release \
               -DCMAKE_C_COMPILER=${CC} \
               -DCMAKE_CXX_COMPILER=${CXX} \
+              -DCMAKE_VERBOSE_MAKEFILE=ON \
             --packages-select autoware_tensorrt_vad
         shell: bash
 
