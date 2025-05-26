@@ -214,15 +214,26 @@ jobs:
           if [ -f "/setup.sh" ]; then
             . /setup.sh
           fi
+          # Source ROS2 environment
+          source /opt/ros/${{ inputs.rosdistro }}/setup.bash
+          # Install additional ROS2 build dependencies
+          apt-get update && apt-get install -y \
+            ros-${{ inputs.rosdistro }}-ament-cmake \
+            ros-${{ inputs.rosdistro }}-ament-cmake-core \
+            ros-${{ inputs.rosdistro }}-ament-lint-auto \
+            ros-${{ inputs.rosdistro }}-ament-lint-common
           # Import build_depends repositories
           if [ -f build_depends.repos ]; then
             mkdir -p dependency_ws/src
             vcs import dependency_ws/src < build_depends.repos
-            # Build dependencies first
+            # Source ROS2 environment again for dependency build
+            source /opt/ros/${{ inputs.rosdistro }}/setup.bash
+            # Build dependencies first with proper environment
+            cd dependency_ws
             colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release \
-              --packages-up-to autoware_cmake autoware_msgs \
-              --base-paths dependency_ws
-            . dependency_ws/install/setup.bash
+              --packages-up-to autoware_cmake autoware_msgs
+            source install/setup.bash
+            cd ..
           fi
           # Build the target package
           colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release \
