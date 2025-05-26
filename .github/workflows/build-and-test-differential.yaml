@@ -338,11 +338,11 @@ jobs:
                 cp "$crtbegin_64bit" "${gcc_lib_dir}/crtbeginS.o"
                 echo "Copied 64-bit crtbeginS.o from $crtbegin_64bit"
               else
-                echo "64-bit crtbeginS.o not found, creating one"
-                # Create a 64-bit compatible crtbeginS.o
-                echo 'void _init(void) {}' > /tmp/crtbegin.c
+                echo "64-bit crtbeginS.o not found, creating empty one"
+                # Create an empty 64-bit compatible crtbeginS.o
+                echo '' > /tmp/crtbegin.c
                 $CC -m64 -c /tmp/crtbegin.c -o "${gcc_lib_dir}/crtbeginS.o"
-                echo "Created 64-bit crtbeginS.o successfully"
+                echo "Created empty 64-bit crtbeginS.o successfully"
               fi
             fi
 
@@ -355,11 +355,11 @@ jobs:
                 cp "$crtend_64bit" "${gcc_lib_dir}/crtendS.o"
                 echo "Copied 64-bit crtendS.o from $crtend_64bit"
               else
-                echo "64-bit crtendS.o not found, creating one"
-                # Create a 64-bit compatible crtendS.o
-                echo 'void _fini(void) {}' > /tmp/crtend.c
+                echo "64-bit crtendS.o not found, creating empty one"
+                # Create an empty 64-bit compatible crtendS.o
+                echo '' > /tmp/crtend.c
                 $CC -m64 -c /tmp/crtend.c -o "${gcc_lib_dir}/crtendS.o"
-                echo "Created 64-bit crtendS.o successfully"
+                echo "Created empty 64-bit crtendS.o successfully"
               fi
             fi
 
