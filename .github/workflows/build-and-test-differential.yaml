@@ -155,10 +155,24 @@ jobs:
           if [ -f "/setup.sh" ]; then
             . /setup.sh
           fi
+          # Install essential build tools first
+          apt-get update && apt-get install -y \
+            build-essential \
+            gcc \
+            g++ \
+            cpp \
+            cmake \
+            make \
+            libc6-dev \
+            linux-libc-dev \
+            binutils \
+            gcc-11 \
+            g++-11 \
+            cpp-11
           # Install vcs if not available
           if ! command -v vcs &> /dev/null; then
             echo "Installing python3-vcstool"
-            apt-get update && apt-get install -y python3-vcstool
+            apt-get install -y python3-vcstool
           fi
           # Try rosdep update with retry logic
           echo "Attempting rosdep update with retry logic..."
@@ -216,36 +230,72 @@ jobs:
           fi
           # Source ROS2 environment
           source /opt/ros/${{ inputs.rosdistro }}/setup.bash
-          # Install essential build tools and ROS2 build dependencies
+          # Install ROS2 build dependencies
           apt-get update && apt-get install -y \
-            build-essential \
-            gcc \
-            g++ \
-            gcc-multilib \
-            g++-multilib \
-            cpp \
-            cmake \
-            make \
-            libc6-dev \
-            linux-libc-dev \
             ros-${{ inputs.rosdistro }}-ament-cmake \
             ros-${{ inputs.rosdistro }}-ament-cmake-core \
             ros-${{ inputs.rosdistro }}-ament-lint-auto \
             ros-${{ inputs.rosdistro }}-ament-lint-common
-          # Verify compiler installation and PATH
+          # Verify and fix compiler installation
           echo "Checking compiler installation..."
           which gcc || echo "gcc not found"
           which g++ || echo "g++ not found"
           gcc --version || echo "gcc version check failed"
           echo "PATH: $PATH"
-          # Check for cc1 specifically
-          find /usr -name "cc1" 2>/dev/null || echo "cc1 not found"
-          # Set explicit compiler paths and ensure PATH includes gcc libexec
+          # Find and verify cc1 location
+          cc1_path=$(find /usr -name "cc1" 2>/dev/null | head -1)
+          if [ -n "$cc1_path" ]; then
+            echo "Found cc1 at: $cc1_path"
+            cc1_dir=$(dirname "$cc1_path")
+            export PATH="$cc1_dir:$PATH"
+          else
+            echo "cc1 not found, installing gcc-11 specifically"
+            apt-get install -y gcc-11 g++-11
+            # Try to find cc1 again
+            cc1_path=$(find /usr -name "cc1" 2>/dev/null | head -1)
+            if [ -n "$cc1_path" ]; then
+              echo "Found cc1 at: $cc1_path"
+              cc1_dir=$(dirname "$cc1_path")
+              export PATH="$cc1_dir:$PATH"
+            fi
+          fi
+          # Set explicit compiler paths
           export CC=/usr/bin/gcc
           export CXX=/usr/bin/g++
-          export PATH="/usr/lib/gcc/x86_64-linux-gnu/11:$PATH"
+          # Add gcc libexec directories to PATH
+          for gcc_dir in /usr/lib/gcc/x86_64-linux-gnu/*; do
+            if [ -d "$gcc_dir" ]; then
+              export PATH="$gcc_dir:$PATH"
+            fi
+          done
+          # Alternative: try to fix gcc installation if still broken
+          test_cmd="echo 'int main(){return 0;}' | \$CC -x c - -o /tmp/test"
+          if ! eval "$test_cmd" 2>/dev/null; then
+            echo "Compiler still broken, trying alternative fixes..."
+            # Reinstall gcc completely
+            apt-get remove -y gcc g++ cpp
+            apt-get autoremove -y
+            apt-get install -y gcc-11 g++-11 cpp-11
+            update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 100
+            update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 100
+            update-alternatives --install /usr/bin/cpp cpp /usr/bin/cpp-11 100
+            export CC=/usr/bin/gcc-11
+            export CXX=/usr/bin/g++-11
+            # Update PATH again
+            for gcc_dir in /usr/lib/gcc/x86_64-linux-gnu/*; do
+              if [ -d "$gcc_dir" ]; then
+                export PATH="$gcc_dir:$PATH"
+              fi
+            done
+          fi
           echo "CC=${CC}, CXX=${CXX}"
           echo "Updated PATH: $PATH"
+          # Test compiler functionality
+          echo "Testing compiler..."
+          echo 'int main(){return 0;}' > test.c
+          $CC -c test.c -o test.o && echo "Compiler test passed" || \
+            echo "Compiler test failed"
+          rm -f test.c test.o
           # Import build_depends repositories
           if [ -f build_depends.repos ]; then
             mkdir -p dependency_ws/src
