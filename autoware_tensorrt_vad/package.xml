@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>autoware_tensorrt_vad</name>
+  <version>0.0.0</version>
+  <description>VAD ROS Node for Autoware</description>
+  <maintainer email="aquashin0202@gmail.com">shintarotomie</maintainer>
+  <license>Apache License 2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>autoware_cmake</buildtool_depend>
+  <!-- ROS2 core dependencies -->
+  <depend>autoware_perception_msgs</depend>
+  <depend>autoware_planning_msgs</depend>
+  <depend>eigen3</depend>
+  <depend>eigen3_cmake_module</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>rclcpp</depend>
+  <depend>rosbag2_cpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>tf2_eigen</depend>
+  <depend>tf2_ros</depend>
+
+  <!-- TF2 dependencies -->
+
+  <!-- Eigen dependencies -->
+
+  <!-- Message dependencies -->
+
+  <!-- Autoware message dependencies -->
+
+  <!-- Rosbag dependencies -->
+
+  <!-- System dependencies -->
+  <build_depend>libcuda-dev</build_depend>
+  <build_depend>libnvinfer-dev</build_depend>
+  <build_depend>libstb-dev</build_depend>
+  <build_depend>nlohmann-json-dev</build_depend>
+
+  <exec_depend>libcuda1</exec_depend>
+  <exec_depend>libnvinfer8</exec_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
