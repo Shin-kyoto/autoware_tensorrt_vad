@@ -223,10 +223,21 @@ jobs:
             g++ \
             cmake \
             make \
+            libc6-dev \
+            linux-libc-dev \
             ros-${{ inputs.rosdistro }}-ament-cmake \
             ros-${{ inputs.rosdistro }}-ament-cmake-core \
             ros-${{ inputs.rosdistro }}-ament-lint-auto \
             ros-${{ inputs.rosdistro }}-ament-lint-common
+          # Verify compiler installation
+          echo "Checking compiler installation..."
+          which gcc || echo "gcc not found"
+          which g++ || echo "g++ not found"
+          gcc --version || echo "gcc version check failed"
+          # Set explicit compiler paths
+          export CC=/usr/bin/gcc
+          export CXX=/usr/bin/g++
+          echo "CC=${CC}, CXX=${CXX}"
           # Import build_depends repositories
           if [ -f build_depends.repos ]; then
             mkdir -p dependency_ws/src
@@ -235,13 +246,19 @@ jobs:
             source /opt/ros/${{ inputs.rosdistro }}/setup.bash
             # Build dependencies first with proper environment
             cd dependency_ws
-            colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release \
+            colcon build --cmake-args \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_C_COMPILER=${CC} \
+              -DCMAKE_CXX_COMPILER=${CXX} \
               --packages-up-to autoware_cmake autoware_msgs
             source install/setup.bash
             cd ..
           fi
           # Build the target package
-          colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release \
+          colcon build --cmake-args \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=${CC} \
+            -DCMAKE_CXX_COMPILER=${CXX} \
             --packages-select autoware_tensorrt_vad
         shell: bash
 
