@@ -331,8 +331,7 @@ jobs:
             if [ ! -f "${gcc_lib_dir}/crtbeginS.o" ]; then
               echo "Creating crtbeginS.o"
               # Try to find any crtbeginS.o and copy it
-              crtbegin_cmd="find /usr -name \"crtbeginS.o\" -type f 2>/dev/null"
-              crtbegin_source=$(${crtbegin_cmd} | head -1)
+              crtbegin_source=$(find /usr -name "crtbeginS.o" -type f 2>/dev/null | head -1)
               if [ -n "$crtbegin_source" ]; then
                 cp "$crtbegin_source" "${gcc_lib_dir}/crtbeginS.o"
                 echo "Copied crtbeginS.o from $crtbegin_source"
@@ -347,8 +346,7 @@ jobs:
             # Create missing crtendS.o
             if [ ! -f "${gcc_lib_dir}/crtendS.o" ]; then
               echo "Creating crtendS.o"
-              crtend_cmd="find /usr -name \"crtendS.o\" -type f 2>/dev/null"
-              crtend_source=$(${crtend_cmd} | head -1)
+              crtend_source=$(find /usr -name "crtendS.o" -type f 2>/dev/null | head -1)
               if [ -n "$crtend_source" ]; then
                 cp "$crtend_source" "${gcc_lib_dir}/crtendS.o"
                 echo "Copied crtendS.o from $crtend_source"
@@ -364,8 +362,7 @@ jobs:
             if [ ! -f "${gcc_lib_dir}/libgcc.a" ]; then
               echo "Creating libgcc.a"
               # Try any libgcc.a as fallback
-              libgcc_cmd="find /usr -name \"libgcc.a\" -type f 2>/dev/null"
-              libgcc_any=$(${libgcc_cmd} | head -1)
+              libgcc_any=$(find /usr -name "libgcc.a" -type f 2>/dev/null | head -1)
               if [ -n "$libgcc_any" ]; then
                 cp "$libgcc_any" "${gcc_lib_dir}/libgcc.a"
                 echo "Copied libgcc.a from $libgcc_any (fallback)"
