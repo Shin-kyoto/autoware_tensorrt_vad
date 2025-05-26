@@ -87,10 +87,6 @@ jobs:
       - name: Remove exec_depend
         uses: autowarefoundation/autoware-github-actions/remove-exec-depend@v1 # yamllint disable-line rule:line-length
 
-      - name: Get modified packages
-        id: get-modified-packages
-        uses: autowarefoundation/autoware-github-actions/get-modified-packages@v1 # yamllint disable-line rule:line-length
-
       - name: Create ccache directory and check availability
         run: |
           mkdir -p ${CCACHE_DIR}
@@ -153,21 +149,42 @@ jobs:
         run: cp build_depends_humble.repos build_depends.repos
         shell: bash
 
+      - name: Install dependencies
+        run: |
+          if [ -f "/setup.sh" ]; then
+            . /setup.sh
+          fi
+          # Install vcs if not available
+          if ! command -v vcs &> /dev/null; then
+            echo "Installing python3-vcstool"
+            apt-get update && apt-get install -y python3-vcstool
+          fi
+          # Install rosdep dependencies
+          DEBIAN_FRONTEND=noninteractive rosdep update
+          DEBIAN_FRONTEND=noninteractive rosdep install -yqq \
+            --from-paths autoware_tensorrt_vad \
+            --ignore-src --rosdistro ${{ inputs.rosdistro }}
+        shell: bash
+
       - name: Build autoware_tensorrt_vad
-        if: >
-          ${{ steps.get-modified-packages.outputs.modified-packages != ''
-          || github.event_name == 'push' }}
-        uses: autowarefoundation/autoware-github-actions/colcon-build@v1 # yamllint disable-line rule:line-length
-        with:
-          rosdistro: ${{ inputs.rosdistro }}
-          target-packages: >
-            ${{ steps.get-modified-packages.outputs.modified-packages
-            || 'autoware_tensorrt_vad' }}
-          build-depends-repos: build_depends.repos
-          cache-key-element: >
-            ${{ env.BUILD_TYPE_CUDA_STATE }}
-          build-pre-command: >
-            ${{ inputs.build-pre-command }}
+        run: |
+          if [ -f "/setup.sh" ]; then
+            . /setup.sh
+          fi
+          # Import build_depends repositories
+          if [ -f build_depends.repos ]; then
+            mkdir -p dependency_ws/src
+            vcs import dependency_ws/src < build_depends.repos
+            # Build dependencies first
+            colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release \
+              --packages-up-to autoware_cmake autoware_msgs \
+              --base-paths dependency_ws
+            . dependency_ws/install/setup.bash
+          fi
+          # Build the target package
+          colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release \
+            --packages-select autoware_tensorrt_vad
+        shell: bash
 
       - name: Show ccache stats after build
         run: |
@@ -180,16 +197,22 @@ jobs:
 
       - name: Test autoware_tensorrt_vad
         id: test
-        if: >
-          ${{ steps.get-modified-packages.outputs.modified-packages != ''
-          || github.event_name == 'push' }}
-        uses: autowarefoundation/autoware-github-actions/colcon-test@v1 # yamllint disable-line rule:line-length
-        with:
-          rosdistro: ${{ inputs.rosdistro }}
-          target-packages: >
-            ${{ steps.get-modified-packages.outputs.modified-packages
-            || 'autoware_tensorrt_vad' }}
-          build-depends-repos: build_depends.repos
+        run: |
+          if [ -f "/setup.sh" ]; then
+            . /setup.sh
+          fi
+          # Source the built packages
+          if [ -f dependency_ws/install/setup.bash ]; then
+            . dependency_ws/install/setup.bash
+          fi
+          if [ -f install/setup.bash ]; then
+            . install/setup.bash
+          fi
+          # Run tests
+          colcon test --packages-select autoware_tensorrt_vad
+          # Check test results
+          colcon test-result --verbose
+        shell: bash
 
       - name: Upload coverage to CodeCov
         if: ${{ steps.test.outputs.coverage-report-files != '' }}
