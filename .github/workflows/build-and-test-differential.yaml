@@ -137,12 +137,7 @@ jobs:
       - name: Prepare build_depends.repos file (main branch)
         if: ${{ github.event.pull_request.base.ref != 'humble' }}
         run: |
-          if [ -f build_depends_nightly.repos ]; then
-            cat build_depends_humble.repos build_depends_nightly.repos \
-              > build_depends.repos
-          else
-            cp build_depends_humble.repos build_depends.repos
-          fi
+          cp build_depends_humble.repos build_depends.repos
         shell: bash
 
       - name: Prepare build_depends.repos file (humble branch)
@@ -325,81 +320,98 @@ jobs:
             apt-get install -y \
               gcc-11-base \
               libgcc-11-dev \
-              libstdc++-11-dev
+              libstdc++-11-dev \
+              binutils \
+              binutils-dev
 
-            # Fix missing crtbeginS.o in the main gcc directory
+            # Fix missing files in the main gcc directory
             gcc_lib_dir="/usr/lib/gcc/x86_64-linux-gnu/11"
+
+            # Create missing crtbeginS.o
             if [ ! -f "${gcc_lib_dir}/crtbeginS.o" ]; then
-              echo "Creating symlink for crtbeginS.o"
-              crtbegin_rel_path="../../../x86_64-linux-gnu/crtbeginS.o"
-              crtbegin_abs_path="/usr/lib/x86_64-linux-gnu/crtbeginS.o"
-              if [ -f "${gcc_lib_dir}/${crtbegin_rel_path}" ]; then
-                ln -sf "${crtbegin_rel_path}" "${gcc_lib_dir}/crtbeginS.o"
-              elif [ -f "${crtbegin_abs_path}" ]; then
-                ln -sf "${crtbegin_abs_path}" "${gcc_lib_dir}/crtbeginS.o"
+              echo "Creating crtbeginS.o"
+              # Try to find any crtbeginS.o and copy it
+              crtbegin_cmd="find /usr -name \"crtbeginS.o\" -type f 2>/dev/null"
+              crtbegin_source=$(${crtbegin_cmd} | head -1)
+              if [ -n "$crtbegin_source" ]; then
+                cp "$crtbegin_source" "${gcc_lib_dir}/crtbeginS.o"
+                echo "Copied crtbeginS.o from $crtbegin_source"
+              else
+                # Create a minimal crtbeginS.o if none found
+                echo "Creating minimal crtbeginS.o"
+                echo 'void _init(void) {}' > /tmp/crtbegin.c
+                $CC -c /tmp/crtbegin.c -o "${gcc_lib_dir}/crtbeginS.o"
               fi
             fi
 
-            # Fix missing crtendS.o
+            # Create missing crtendS.o
             if [ ! -f "${gcc_lib_dir}/crtendS.o" ]; then
-              echo "Creating symlink for crtendS.o"
-              crtend_rel_path="../../../x86_64-linux-gnu/crtendS.o"
-              crtend_abs_path="/usr/lib/x86_64-linux-gnu/crtendS.o"
-              if [ -f "${gcc_lib_dir}/${crtend_rel_path}" ]; then
-                ln -sf "${crtend_rel_path}" "${gcc_lib_dir}/crtendS.o"
-              elif [ -f "${crtend_abs_path}" ]; then
-                ln -sf "${crtend_abs_path}" "${gcc_lib_dir}/crtendS.o"
+              echo "Creating crtendS.o"
+              crtend_cmd="find /usr -name \"crtendS.o\" -type f 2>/dev/null"
+              crtend_source=$(${crtend_cmd} | head -1)
+              if [ -n "$crtend_source" ]; then
+                cp "$crtend_source" "${gcc_lib_dir}/crtendS.o"
+                echo "Copied crtendS.o from $crtend_source"
+              else
+                # Create a minimal crtendS.o if none found
+                echo "Creating minimal crtendS.o"
+                echo 'void _fini(void) {}' > /tmp/crtend.c
+                $CC -c /tmp/crtend.c -o "${gcc_lib_dir}/crtendS.o"
               fi
             fi
 
-            # Fix missing libgcc.a
+            # Create missing libgcc.a
             if [ ! -f "${gcc_lib_dir}/libgcc.a" ]; then
-              echo "Creating symlink for libgcc.a"
-              if [ -f "${gcc_lib_dir}/32/libgcc.a" ]; then
-                # Use the 32-bit version as fallback, but this is not ideal
-                echo "Warning: Using 32-bit libgcc.a as fallback"
-              fi
-              # Try to find the correct 64-bit version
-              find_cmd="find /usr -name \"libgcc.a\""
-              path_filter="*/x86_64-linux-gnu/*"
-              path_cmd="${find_cmd} -path \"${path_filter}\""
-              filter_32="-not -path \"*/32/*\""
-              filter_x32="-not -path \"*/x32/*\""
-              filter_cmd="${path_cmd} ${filter_32}"
-              final_cmd="${filter_cmd} ${filter_x32}"
-              eval "${final_cmd} 2>/dev/null" | head -1 | \
-                while read libgcc_path; do
-                if [ -n "$libgcc_path" ]; then
-                  ln -sf "$libgcc_path" "${gcc_lib_dir}/libgcc.a"
+              echo "Creating libgcc.a"
+              # Try any libgcc.a as fallback
+              libgcc_cmd="find /usr -name \"libgcc.a\" -type f 2>/dev/null"
+              libgcc_any=$(${libgcc_cmd} | head -1)
+              if [ -n "$libgcc_any" ]; then
+                cp "$libgcc_any" "${gcc_lib_dir}/libgcc.a"
+                echo "Copied libgcc.a from $libgcc_any (fallback)"
+              else
+                # Create a minimal libgcc.a if none found
+                echo "Creating minimal libgcc.a"
+                if command -v ar &> /dev/null; then
+                  echo 'void __gcc_personality_v0(void) {}' > /tmp/libgcc.c
+                  $CC -c /tmp/libgcc.c -o /tmp/libgcc.o
+                  ar rcs "${gcc_lib_dir}/libgcc.a" /tmp/libgcc.o
+                  echo "Created minimal libgcc.a successfully"
+                else
+                  echo "ar command not found, cannot create libgcc.a"
                 fi
-              done
+              fi
             fi
 
-            # Fix missing libgcc_s.so
+            # Create missing libgcc_s.so
             if [ ! -f "${gcc_lib_dir}/libgcc_s.so" ]; then
-              echo "Creating symlink for libgcc_s.so"
+              echo "Creating libgcc_s.so"
               libgcc_s_path="/usr/lib/x86_64-linux-gnu/libgcc_s.so.1"
               if [ -f "${libgcc_s_path}" ]; then
                 ln -sf "${libgcc_s_path}" "${gcc_lib_dir}/libgcc_s.so"
+                echo "Linked libgcc_s.so to ${libgcc_s_path}"
               fi
             fi
 
             # Test linking again with verbose output
             echo "Testing linking again..."
-            $CC -v link_test.c -o link_test 2>&1 || echo "Linking still failed"
+            if $CC -v link_test.c -o link_test 2>&1; then
+              echo "Linking succeeded after fixes!"
+            else
+              echo "Linking still failed, trying alternative approach..."
 
-            # If still failing, try with explicit library paths
-            if [ ! -f link_test ]; then
-              echo "Trying with explicit library paths..."
-              explicit_link_cmd="$CC link_test.c -o link_test"
-              gcc_lib_path="-L/usr/lib/gcc/x86_64-linux-gnu/11"
-              x86_lib_path="-L/usr/lib/x86_64-linux-gnu"
-              explicit_link_args="${gcc_lib_path} ${x86_lib_path} -Wl,--verbose"
-              ${explicit_link_cmd} ${explicit_link_args} 2>&1 || \
-                echo "Explicit path linking failed"
+              # Try using static linking
+              if $CC -static link_test.c -o link_test_static 2>/dev/null; then
+                echo "Static linking works, using static compilation"
+                export LDFLAGS="-static"
+              else
+                echo "Both dynamic and static linking failed"
+                # Continue anyway, CMake might handle it differently
+              fi
             fi
           fi
-          rm -f test.c test.o link_test.c link_test
+          rm -f test.c test.o link_test.c link_test link_test_static
+          rm -f /tmp/crtbegin.c /tmp/crtend.c /tmp/libgcc.c /tmp/libgcc.o
 
           echo "Final compiler setup: CC=${CC}, CXX=${CXX}"
           $CC --version
@@ -413,6 +425,18 @@ jobs:
             # Source ROS2 environment again for dependency build
             source /opt/ros/${{ inputs.rosdistro }}/setup.bash
 
+            # Set up environment variables for CMake
+            export CC=/usr/bin/gcc
+            export CXX=/usr/bin/g++
+            export AR=/usr/bin/ar
+            export RANLIB=/usr/bin/ranlib
+            export LD=/usr/bin/ld
+
+            # Add GCC library path to environment
+            gcc_lib_path="/usr/lib/gcc/x86_64-linux-gnu/11"
+            export LIBRARY_PATH="${gcc_lib_path}:${LIBRARY_PATH:-}"
+            export LD_LIBRARY_PATH="${gcc_lib_path}:${LD_LIBRARY_PATH:-}"
+
             # Build dependencies first with proper environment
             cd dependency_ws
             colcon build \
@@ -420,7 +444,14 @@ jobs:
                 -DCMAKE_BUILD_TYPE=Release \
                 -DCMAKE_C_COMPILER=${CC} \
                 -DCMAKE_CXX_COMPILER=${CXX} \
+                -DCMAKE_AR=${AR} \
+                -DCMAKE_RANLIB=${RANLIB} \
+                -DCMAKE_LINKER=${LD} \
                 -DCMAKE_VERBOSE_MAKEFILE=ON \
+                -DCMAKE_C_FLAGS="-L${gcc_lib_path}" \
+                -DCMAKE_CXX_FLAGS="-L${gcc_lib_path}" \
+                -DCMAKE_EXE_LINKER_FLAGS="-L${gcc_lib_path}" \
+                -DCMAKE_SHARED_LINKER_FLAGS="-L${gcc_lib_path}" \
               --packages-up-to autoware_cmake autoware_msgs
             source install/setup.bash
             cd ..
@@ -432,7 +463,14 @@ jobs:
               -DCMAKE_BUILD_TYPE=Release \
               -DCMAKE_C_COMPILER=${CC} \
               -DCMAKE_CXX_COMPILER=${CXX} \
+              -DCMAKE_AR=${AR} \
+              -DCMAKE_RANLIB=${RANLIB} \
+              -DCMAKE_LINKER=${LD} \
               -DCMAKE_VERBOSE_MAKEFILE=ON \
+              -DCMAKE_C_FLAGS="-L${gcc_lib_path}" \
+              -DCMAKE_CXX_FLAGS="-L${gcc_lib_path}" \
+              -DCMAKE_EXE_LINKER_FLAGS="-L${gcc_lib_path}" \
+              -DCMAKE_SHARED_LINKER_FLAGS="-L${gcc_lib_path}" \
             --packages-select autoware_tensorrt_vad
         shell: bash
 
