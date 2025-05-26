@@ -1,0 +1,54 @@
+---
+name: build-and-test
+
+"on":
+  pull_request: {}
+  push:
+    branches:
+      - main
+      - humble
+  workflow_dispatch:
+    inputs:
+      skip_label_check:
+        description: "Skip label check for testing"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  prevent-no-label-execution:
+    if: >
+      ${{ github.event_name != 'workflow_dispatch'
+      || !inputs.skip_label_check }}
+    uses: >
+      autowarefoundation/autoware-github-actions/.github/workflows/prevent-no-label-execution.yaml@v1
+    with:
+      label: tag:run-build-and-test
+
+  build-and-test-cuda:
+    needs: [prevent-no-label-execution]
+    if: >
+      ${{ always() && (needs.prevent-no-label-execution.result == 'skipped'
+      || needs.prevent-no-label-execution.outputs.run == 'true') }}
+    uses: ./.github/workflows/build-and-test-differential.yaml
+    with:
+      container: ghcr.io/autowarefoundation/autoware:latest-runtime-cuda
+      container-suffix: ""
+      rosdistro: humble
+      runner: "['ubuntu-24.04']"
+    secrets:
+      codecov-token: ${{ secrets.CODECOV_TOKEN }}
+
+  build-and-test-no-cuda:
+    needs: [prevent-no-label-execution]
+    if: >
+      ${{ always() && (needs.prevent-no-label-execution.result == 'skipped'
+      || needs.prevent-no-label-execution.outputs.run == 'true') }}
+    uses: ./.github/workflows/build-and-test-differential.yaml
+    with:
+      container: ghcr.io/autowarefoundation/autoware:latest-runtime
+      container-suffix: ""
+      rosdistro: humble
+      runner: "['ubuntu-24.04']"
+    secrets:
+      codecov-token: ${{ secrets.CODECOV_TOKEN }}

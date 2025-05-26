@@ -1,0 +1,41 @@
+---
+name: test-build
+
+"on":
+  workflow_dispatch:
+    inputs:
+      test_cuda:
+        description: "Test CUDA build"
+        required: false
+        default: true
+        type: boolean
+      test_no_cuda:
+        description: "Test non-CUDA build"
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  test-build-cuda:
+    if: ${{ inputs.test_cuda }}
+    uses: ./.github/workflows/build-and-test-differential.yaml
+    with:
+      container: ghcr.io/autowarefoundation/autoware:latest-runtime-cuda
+      container-suffix: ""
+      rosdistro: humble
+      runner: "['ubuntu-24.04']"
+      run-condition: true
+    secrets:
+      codecov-token: ${{ secrets.CODECOV_TOKEN }}
+
+  test-build-no-cuda:
+    if: ${{ inputs.test_no_cuda }}
+    uses: ./.github/workflows/build-and-test-differential.yaml
+    with:
+      container: ghcr.io/autowarefoundation/autoware:latest-runtime
+      container-suffix: ""
+      rosdistro: humble
+      runner: "['ubuntu-24.04']"
+      run-condition: true
+    secrets:
+      codecov-token: ${{ secrets.CODECOV_TOKEN }}
