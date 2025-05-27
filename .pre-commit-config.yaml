@@ -81,12 +81,13 @@ repos:
       - id: clang-format
         types_or: [c++, c, cuda]
 
-  - repo: https://github.com/cpplint/cpplint
-    rev: 2.0.0
+  # Add clang-tidy for naming convention enforcement
+  - repo: https://github.com/pocc/pre-commit-hooks
+    rev: v1.3.5
     hooks:
-      - id: cpplint
-        args: [--quiet]
-        exclude: .cu
+      - id: clang-tidy
+        args: [--config-file=.clang-tidy]
+        types_or: [c++, c]
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0.30.0
