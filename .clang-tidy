@@ -1,0 +1,127 @@
+---
+# clang-tidy configuration for autoware_tensorrt_vad
+# Enforces naming conventions:
+# - Variables, functions, methods: lower_snake_case
+# - Classes: UpperCamelCase
+# - Member variables: lower_snake_case_
+#
+# GoogleTest exceptions:
+# - SetUp/TearDown methods: CamelCase (GoogleTest framework requirement)
+# - Test names (TEST_F): CamelCase (GoogleTest convention)
+
+Checks: >
+  -*,
+  readability-identifier-naming,
+  modernize-*,
+  performance-*,
+  bugprone-*,
+  clang-analyzer-*,
+  cppcoreguidelines-*,
+  -modernize-use-trailing-return-type,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-avoid-c-arrays,
+  -cppcoreguidelines-special-member-functions,
+  -modernize-avoid-c-arrays
+
+CheckOptions:
+  # Variables (local variables, parameters, etc.) - lower_snake_case
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case
+  - key: readability-identifier-naming.VariableIgnoredRegexp
+    value: "^[a-z][a-z0-9_]*$"
+
+  # Functions - lower_snake_case
+  - key: readability-identifier-naming.FunctionCase
+    value: lower_case
+  - key: readability-identifier-naming.FunctionIgnoredRegexp
+    value: "^[a-z][a-z0-9_]*$"
+
+  # Methods (member functions) - lower_snake_case
+  # Exception: GoogleTest SetUp/TearDown methods are allowed in CamelCase
+  - key: readability-identifier-naming.MethodCase
+    value: lower_case
+  - key: readability-identifier-naming.MethodIgnoredRegexp
+    value: "^([a-z][a-z0-9_]*|SetUp|TearDown)$"
+
+  # Classes - UpperCamelCase
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.ClassIgnoredRegexp
+    value: "^[A-Z][a-zA-Z0-9]*$"
+
+  # Structs - UpperCamelCase
+  - key: readability-identifier-naming.StructCase
+    value: CamelCase
+  - key: readability-identifier-naming.StructIgnoredRegexp
+    value: "^[A-Z][a-zA-Z0-9]*$"
+
+  # Member variables - lower_snake_case_
+  - key: readability-identifier-naming.MemberCase
+    value: lower_case
+  - key: readability-identifier-naming.MemberSuffix
+    value: "_"
+  - key: readability-identifier-naming.MemberIgnoredRegexp
+    value: "^[a-z][a-z0-9_]*_$"
+
+  # Private member variables - lower_snake_case_
+  - key: readability-identifier-naming.PrivateMemberCase
+    value: lower_case
+  - key: readability-identifier-naming.PrivateMemberSuffix
+    value: "_"
+  - key: readability-identifier-naming.PrivateMemberIgnoredRegexp
+    value: "^[a-z][a-z0-9_]*_$"
+
+  # Protected member variables - lower_snake_case_
+  - key: readability-identifier-naming.ProtectedMemberCase
+    value: lower_case
+  - key: readability-identifier-naming.ProtectedMemberSuffix
+    value: "_"
+  - key: readability-identifier-naming.ProtectedMemberIgnoredRegexp
+    value: "^[a-z][a-z0-9_]*_$"
+
+  # Public member variables - lower_snake_case_
+  - key: readability-identifier-naming.PublicMemberCase
+    value: lower_case
+  - key: readability-identifier-naming.PublicMemberSuffix
+    value: "_"
+  - key: readability-identifier-naming.PublicMemberIgnoredRegexp
+    value: "^[a-z][a-z0-9_]*_$"
+
+  # Parameters - lower_snake_case
+  - key: readability-identifier-naming.ParameterCase
+    value: lower_case
+  - key: readability-identifier-naming.ParameterIgnoredRegexp
+    value: "^[a-z][a-z0-9_]*$"
+
+  # Enums - UpperCamelCase
+  - key: readability-identifier-naming.EnumCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumIgnoredRegexp
+    value: "^[A-Z][a-zA-Z0-9]*$"
+
+  # Enum constants - lower_snake_case (to avoid macro name collision)
+  - key: readability-identifier-naming.EnumConstantCase
+    value: lower_case
+  - key: readability-identifier-naming.EnumConstantIgnoredRegexp
+    value: "^[a-z][a-z0-9_]*$"
+
+  # Namespaces - lower_case
+  - key: readability-identifier-naming.NamespaceCase
+    value: lower_case
+  - key: readability-identifier-naming.NamespaceIgnoredRegexp
+    value: "^[a-z][a-z0-9_]*$"
+
+  # Constants - lower_snake_case (to avoid macro name collision)
+  - key: readability-identifier-naming.ConstantCase
+    value: lower_case
+  - key: readability-identifier-naming.ConstantIgnoredRegexp
+    value: "^[a-z][a-z0-9_]*$"
+
+  # Global constants - lower_snake_case (to avoid macro name collision)
+  - key: readability-identifier-naming.GlobalConstantCase
+    value: lower_case
+  - key: readability-identifier-naming.GlobalConstantIgnoredRegexp
+    value: "^[a-z][a-z0-9_]*$"
+
+HeaderFilterRegex: '.*\.(h|hpp)$'
+WarningsAsErrors: "readability-identifier-naming"
