@@ -49,8 +49,14 @@ qtcreator-*
 # Emacs
 .#*
 
+# VSCode
+.vscode/
+
 # Catkin custom files
 CATKIN_IGNORE
+
+# ROS 2 log
+cyclonedds.log
 
 #prettier
 node_modules/
