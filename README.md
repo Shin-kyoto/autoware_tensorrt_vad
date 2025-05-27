@@ -10,6 +10,20 @@ VAD: Vectorized Scene Representation for Efficient Autonomous Driving is `Sensor
 
 - Please see [docs/design](./docs/design/)
 
+## Development
+
+### Requirements
+
+- **C++ Standard**: C++17 (aligned with Autoware Universe)
+- **ROS 2**: Humble or later
+- **CMake**: 3.14 or later
+
+### Coding Standards
+
+This project follows the coding standards enforced by clang-tidy. Please refer to:
+
+- **[Coding Standards](./docs/design/coding_standards.md)** - Comprehensive coding standards including naming conventions
+
 ## Official repositoty
 
 - <https://github.com/hustvl/VAD>
