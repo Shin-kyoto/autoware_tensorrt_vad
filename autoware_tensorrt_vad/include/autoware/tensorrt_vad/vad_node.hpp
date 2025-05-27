@@ -12,14 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__TENSORRT_VAD__VAD_NODE_HPP_
-#define AUTOWARE__TENSORRT_VAD__VAD_NODE_HPP_
+#ifndef AUTOWARE_TENSORRT_VAD_VAD_NODE_HPP_
+#define AUTOWARE_TENSORRT_VAD_VAD_NODE_HPP_
 
-#include <tf2_ros/buffer.h>
-#include <tf2_ros/transform_listener.h>
+#include "autoware/tensorrt_vad/vad_trt.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
+
+#include <autoware_planning_msgs/msg/trajectory.hpp>
 
 // Forward declarations for future use
 // #include <cuda_runtime.h>
@@ -28,14 +29,26 @@
 // #include <sensor_msgs/msg/image.hpp>
 // #include <autoware_perception_msgs/msg/detected_objects.hpp>
 
-namespace autoware::tensorrt_vad {
-class VadNode : public rclcpp::Node {
+namespace autoware::tensorrt_vad
+{
+class VadNode : public rclcpp::Node
+{
 public:
-  explicit VadNode(const rclcpp::NodeOptions &options);
+  explicit VadNode(const rclcpp::NodeOptions & options);
 
 private:
-  tf2_ros::Buffer tf_buffer_; // TF buffer for coordinate transformations
-};
-} // namespace autoware::tensorrt_vad
+  // VADモデル
+  std::unique_ptr<VadModel> vad_model_;
 
-#endif // AUTOWARE__TENSORRT_VAD__VAD_NODE_HPP_
+  // Publishers
+  rclcpp::Publisher<autoware_planning_msgs::msg::Trajectory>::SharedPtr trajectory_pub_;
+
+  // 推論を実行するメソッド
+  void execute_inference();
+
+  // 軌道をpublishするメソッド
+  void publish_trajectory(const std::vector<float> & predicted_trajectory);
+};
+}  // namespace autoware::tensorrt_vad
+
+#endif  // AUTOWARE_TENSORRT_VAD_VAD_NODE_HPP_

@@ -4,6 +4,13 @@ project(autoware_tensorrt_vad)
 find_package(autoware_cmake REQUIRED)
 autoware_package()
 
+# Set C++17 standard to match Autoware Universe
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 add_compile_options(-Wno-deprecated-declarations)
 
 find_package(ament_cmake_auto REQUIRED)
@@ -48,6 +55,14 @@ if(BUILD_TESTING)
   # a copyright and license is added to all source files
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
+
+  # VadModel unit tests
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(test_vad_model test/test_vad_model.cpp)
+  target_link_libraries(test_vad_model ${PROJECT_NAME}_lib)
+  target_include_directories(test_vad_model PRIVATE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  )
 endif()
 
 ament_auto_package(

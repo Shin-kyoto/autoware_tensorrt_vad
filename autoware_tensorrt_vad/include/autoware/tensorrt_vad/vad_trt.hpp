@@ -12,15 +12,98 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__TENSORRT_VAD__VAD_TRT_HPP_
-#define AUTOWARE__TENSORRT_VAD__VAD_TRT_HPP_
+#ifndef AUTOWARE_TENSORRT_VAD_VAD_TRT_HPP_
+#define AUTOWARE_TENSORRT_VAD_VAD_TRT_HPP_
 
-namespace autoware::tensorrt_vad {
+#include <optional>
+#include <string>
+#include <vector>
 
-// Dummy function declaration
-// TODO(Shin-kyoto): Implement this function
-void dummy_function();
+namespace autoware::tensorrt_vad
+{
 
-} // namespace autoware::tensorrt_vad
+// VAD推論の入力データ構造
+struct VadInputData
+{
+  // カメラ画像データ（複数カメラ対応）
+  std::vector<std::vector<float>> camera_images_{};
 
-#endif // AUTOWARE__TENSORRT_VAD__VAD_TRT_HPP_
+  // 前回のBEV特徴量（時系列処理用）
+  // nets["head_no_prev"]->bindings["out.bev_embed"]
+  //
+  std::vector<float> prev_bev_{};
+
+  // シフト情報（img_metas.0[shift]）
+  std::vector<float> shift_data_{};
+
+  // LiDAR座標系からカメラ画像座標系への変換行列（img_metas.0[lidar2img]）
+  std::vector<float> lidar2img_data_{};
+
+  // CAN-BUSデータ（車両状態情報：速度、角速度など）(img_metas.0[can_bus])
+  std::vector<float> can_bus_data_{};
+
+  // タイムスタンプ
+  double timestamp_{0.0};
+
+  // コマンドインデックス（軌道選択用）
+  int32_t command_{0};
+};
+
+// VAD推論の出力データ構造
+struct VadOutputData
+{
+  // 予測された軌道（6つの2D座標点、累積座標として表現）
+  // planning[0,1] = 1st point (x,y), planning[2,3] = 2nd point (x,y), ...
+  std::vector<float> predicted_trajectory_{};  // size: 12 (6 points * 2 coordinates)
+
+  // 検出されたオブジェクト
+  std::vector<std::vector<float>> detected_objects_{};
+
+  // 信頼度スコア
+  std::vector<float> confidence_scores_{};
+
+  // 推論時間
+  double inference_time_ms_{0.0};
+
+  // コマンドインデックス（選択された軌道のインデックス）
+  int32_t selected_command_index_{1};
+};
+
+// VADモデルクラス - CUDA/TensorRTを用いた推論を担当
+class VadModel
+{
+public:
+  // コンストラクタ
+  VadModel();
+
+  // デストラクタ
+  ~VadModel();
+
+  // モデルの初期化
+  [[nodiscard]] bool initialize(const std::string & model_path);
+
+  // メイン推論API
+  [[nodiscard]] std::optional<VadOutputData> infer(const VadInputData & input);
+
+  // モデルが初期化されているかチェック
+  [[nodiscard]] bool is_initialized() const;
+
+private:
+  // TensorRTエンジン関連のメンバ変数
+  std::string model_path_;
+  bool initialized_{false};
+  bool engine_loaded_{false};
+
+  // TODO(Shin-kyoto): TensorRTエンジン関連のメンバ変数を追加
+  // nvinfer1::IRuntime* runtime_{nullptr};
+  // nvinfer1::ICudaEngine* engine_{nullptr};
+  // nvinfer1::IExecutionContext* context_{nullptr};
+  // cudaStream_t stream_{nullptr};
+
+  // プライベートヘルパーメソッド
+  void cleanup();
+};
+
+}  // namespace autoware::tensorrt_vad
+
+#endif  // AUTOWARE_TENSORRT_VAD_VAD_TRT_HPP_

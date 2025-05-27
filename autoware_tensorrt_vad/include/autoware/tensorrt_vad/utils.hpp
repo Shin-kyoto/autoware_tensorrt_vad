@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__TENSORRT_VAD__UTILS_HPP_
-#define AUTOWARE__TENSORRT_VAD__UTILS_HPP_
+#ifndef AUTOWARE_TENSORRT_VAD_UTILS_HPP_
+#define AUTOWARE_TENSORRT_VAD_UTILS_HPP_
 
-namespace autoware::tensorrt_vad {
+namespace autoware::tensorrt_vad
+{
 // Utility functions will be added here
-} // namespace autoware::tensorrt_vad
+}  // namespace autoware::tensorrt_vad
 
-#endif // AUTOWARE__TENSORRT_VAD__UTILS_HPP_
+#endif  // AUTOWARE_TENSORRT_VAD_UTILS_HPP_
