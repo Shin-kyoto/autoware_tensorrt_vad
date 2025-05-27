@@ -12,9 +12,9 @@
   <!-- ROS2 core dependencies -->
   <depend>autoware_perception_msgs</depend>
   <depend>autoware_planning_msgs</depend>
-  <depend>eigen3</depend>
   <depend>eigen3_cmake_module</depend>
   <depend>geometry_msgs</depend>
+  <depend>libeigen3-dev</depend>
   <depend>nav_msgs</depend>
   <depend>rclcpp</depend>
   <depend>rosbag2_cpp</depend>
