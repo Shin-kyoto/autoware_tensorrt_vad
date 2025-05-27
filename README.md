@@ -9,3 +9,7 @@ VAD: Vectorized Scene Representation for Efficient Autonomous Driving is `Sensor
 ## Design
 
 - Please see [docs/design](./docs/design/)
+
+## Official repositoty
+
+- <https://github.com/hustvl/VAD>
