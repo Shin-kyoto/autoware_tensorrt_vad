@@ -50,7 +50,7 @@ repos:
       - id: prettier-xacro
       - id: prettier-launch-xml
       - id: prettier-package-xml
-      - id: ros-include-guard
+      # - id: ros-include-guard  # Disabled due to conflict with cpplint
       - id: sort-package-xml
 
   - repo: https://github.com/shellcheck-py/shellcheck-py
