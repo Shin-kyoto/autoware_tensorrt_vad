@@ -41,13 +41,13 @@ VadNode::VadNode(const rclcpp::NodeOptions & options) : Node("vad_node", options
   trajectory_pub_ = this->create_publisher<autoware_planning_msgs::msg::Trajectory>("~/output/trajectory", rclcpp::QoS(1));
 
   // VADモデルの初期化
-  vad_model_ = std::make_unique<VadModel>();
+  vad_model_ptr_ = std::make_unique<VadModel>();
 
   // モデルファイルのパスを取得（パラメータから）
   std::string model_path = this->declare_parameter<std::string>("model_path", "/tmp/vad_model.onnx");
 
   // VADモデルの初期化
-  if (vad_model_->initialize(model_path)) {
+  if (vad_model_ptr_->initialize(model_path)) {
     RCLCPP_INFO(this->get_logger(), "VAD Model initialized successfully with: %s", model_path.c_str());
   } else {
     RCLCPP_ERROR(this->get_logger(), "Failed to initialize VAD Model");

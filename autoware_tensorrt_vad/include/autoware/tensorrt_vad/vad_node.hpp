@@ -37,8 +37,14 @@ public:
   explicit VadNode(const rclcpp::NodeOptions & options);
 
 private:
-  // VADモデル
-  std::unique_ptr<VadModel> vad_model_;
+  // VAD model
+  std::unique_ptr<VadModel> vad_model_ptr_{};
+
+  // VAD input topic
+  // std::unique_ptr<VadTopicData> vad_topic_data_ptr_{};
+
+  // VAD interface
+  // std::unique_ptr<VadInterface> vad_interface_ptr_{};
 
   // Publishers
   rclcpp::Publisher<autoware_planning_msgs::msg::Trajectory>::SharedPtr trajectory_pub_;
