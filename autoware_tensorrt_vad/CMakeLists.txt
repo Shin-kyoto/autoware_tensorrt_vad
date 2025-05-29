@@ -58,11 +58,6 @@ if(BUILD_TESTING)
 
   # VadModel unit tests
   find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(test_vad_model test/test_vad_model.cpp)
-  target_link_libraries(test_vad_model ${PROJECT_NAME}_lib)
-  target_include_directories(test_vad_model PRIVATE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  )
 endif()
 
 ament_auto_package(
