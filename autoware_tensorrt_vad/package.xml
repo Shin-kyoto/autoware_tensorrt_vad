@@ -17,20 +17,11 @@
   <depend>libeigen3-dev</depend>
   <depend>nav_msgs</depend>
   <depend>rclcpp</depend>
+  <depend>rclcpp_components</depend>
   <depend>rosbag2_cpp</depend>
   <depend>sensor_msgs</depend>
   <depend>tf2_eigen</depend>
   <depend>tf2_ros</depend>
-
-  <!-- TF2 dependencies -->
-
-  <!-- Eigen dependencies -->
-
-  <!-- Message dependencies -->
-
-  <!-- Autoware message dependencies -->
-
-  <!-- Rosbag dependencies -->
 
   <!-- System dependencies -->
   <build_depend>libcuda-dev</build_depend>
