@@ -30,7 +30,6 @@ struct VadInputData
 
   // 前回のBEV特徴量（時系列処理用）
   // nets["head_no_prev"]->bindings["out.bev_embed"]
-  //
   std::vector<float> prev_bev_{};
 
   // シフト情報（img_metas.0[shift]）
