@@ -58,14 +58,29 @@ struct VadOutputData
   // 検出されたオブジェクト
   std::vector<std::vector<float>> detected_objects_{};
 
-  // 信頼度スコア
-  std::vector<float> confidence_scores_{};
-
   // 推論時間
   double inference_time_ms_{0.0};
 
   // コマンドインデックス（選択された軌道のインデックス）
   int32_t selected_command_index_{1};
+};
+
+class NetworkParam
+{
+public:
+  NetworkParam(std::string onnx_path, std::string engine_path, std::string trt_precision)
+  : onnx_path_(std::move(onnx_path)), engine_path_(std::move(engine_path)), trt_precision_(std::move(trt_precision))
+  {
+  }
+
+  std::string onnx_path() const { return onnx_path_; }
+  std::string engine_path() const { return engine_path_; }
+  std::string trt_precision() const { return trt_precision_; }
+
+private:
+  std::string onnx_path_;
+  std::string engine_path_;
+  std::string trt_precision_;
 };
 
 // VADモデルクラス - CUDA/TensorRTを用いた推論を担当
@@ -84,23 +99,12 @@ public:
   // メイン推論API
   [[nodiscard]] std::optional<VadOutputData> infer(const VadInputData & input);
 
-  // モデルが初期化されているかチェック
-  [[nodiscard]] bool is_initialized() const;
-
 private:
-  // TensorRTエンジン関連のメンバ変数
-  std::string model_path_;
-  bool initialized_{false};
-  bool engine_loaded_{false};
-
   // TODO(Shin-kyoto): TensorRTエンジン関連のメンバ変数を追加
   // nvinfer1::IRuntime* runtime_{nullptr};
   // nvinfer1::ICudaEngine* engine_{nullptr};
   // nvinfer1::IExecutionContext* context_{nullptr};
   // cudaStream_t stream_{nullptr};
-
-  // プライベートヘルパーメソッド
-  void cleanup();
 };
 
 }  // namespace autoware::tensorrt_vad
