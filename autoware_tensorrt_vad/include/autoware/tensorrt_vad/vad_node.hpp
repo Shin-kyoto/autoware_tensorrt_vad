@@ -20,7 +20,16 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
 
+#include <autoware_perception_msgs/msg/detected_objects.hpp>
 #include <autoware_planning_msgs/msg/trajectory.hpp>
+#include <sensor_msgs/msg/camera_info.hpp>
+#include <sensor_msgs/msg/image.hpp>
+
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
+
+#include <cmath>
+#include <memory>
 
 // Forward declarations for future use
 // #include <cuda_runtime.h>
@@ -37,6 +46,15 @@ public:
   explicit VadNode(const rclcpp::NodeOptions & options);
 
 private:
+  void image_callback(const sensor_msgs::msg::Image::ConstSharedPtr msg, std::size_t camera_id);
+  void camera_info_callback(const sensor_msgs::msg::CameraInfo & msg, std::size_t camera_id);
+
+  std::vector<rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr> image_subs_{};
+  std::vector<rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr> camera_info_subs_{};
+
+  tf2_ros::Buffer tf_buffer_;
+  tf2_ros::TransformListener tf_listener_{tf_buffer_};
+
   // VAD model
   std::unique_ptr<VadModel> vad_model_ptr_{};
 
@@ -47,13 +65,11 @@ private:
   // std::unique_ptr<VadInterface> vad_interface_ptr_{};
 
   // Publishers
-  rclcpp::Publisher<autoware_planning_msgs::msg::Trajectory>::SharedPtr trajectory_pub_;
+  rclcpp::Publisher<autoware_planning_msgs::msg::Trajectory>::SharedPtr trajectory_pub_{nullptr};
+  // rclcpp::Publisher<autoware_perception_msgs::msg::DetectedObjects>::SharedPtr detected_objects_pub_{nullptr};
 
   // 推論を実行するメソッド
-  void execute_inference();
-
-  // 軌道をpublishするメソッド
-  void publish_trajectory(const std::vector<float> & predicted_trajectory);
+  // std::tuple<std::optional<autoware_planning_msgs::msg::Trajectory>, std::optional<autoware_perception_msgs::msg::DetectedObjects> > execute_inference(const VadTopicData & vad_topic_data);
 };
 }  // namespace autoware::tensorrt_vad
 
