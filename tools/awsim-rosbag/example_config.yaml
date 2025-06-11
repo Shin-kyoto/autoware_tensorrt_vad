@@ -1,0 +1,27 @@
+# AWSIM ROSbag 記録設定ファイル例
+
+# 出力パス (必須)
+output_path: "./recorded_bags"
+
+# 記録対象トピック (必須)
+topics:
+  - /sensing/camera/image_raw
+  - /sensing/camera/camera_info
+  - /localization/kinematic_state
+  - /sensing/imu/imu_raw
+  - /tf
+  - /tf_static
+
+# オプション設定
+
+# 圧縮モード (none, file, message)
+compression: "file"
+
+# ストレージ形式 (sqlite3, mcap)
+storage_id: "sqlite3"
+
+# 最大バッグサイズ (MB)
+max_bag_size: 1024
+
+# 最大記録時間 (秒)
+max_bag_duration: 60

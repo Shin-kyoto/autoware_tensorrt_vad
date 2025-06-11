@@ -1,0 +1,21 @@
+[project]
+name = "awsim-rosbag"
+version = "0.1.0"
+description = "AWSIM ROSbag 管理・変換ツール"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "PyYAML>=6.0",
+]
+
+[project.scripts]
+awsim-rosbag = "awsim_rosbag.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# flake8設定: ダブルクォート使用のためQ000エラーを無効化
+[tool.flake8]
+ignore = ["Q000"]
+max-line-length = 100
