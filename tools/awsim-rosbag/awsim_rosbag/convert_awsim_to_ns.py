@@ -38,9 +38,10 @@ def _get_target_image_size(nuscenes_bag_path):
                 return (width, height)
     raise ValueError("Error: Could not determine target image size from /sensing/camera/camera0/image_rect_color/compressed in nuscenes rosbag.")
 
-def _load_awsim_image_raw_messages(awsim_input_bag_path):
+def _load_awsim_image_raw_messages(awsim_input_bag_path, start_index=0):
     """
     Input AWSIM rosbagから/sensing/camera/image_rawメッセージをすべて読み込む。
+    start_index: 開始する画像のインデックス
     """
     awsim_image_raw_msgs_list = []
     reader = rosbag2_py.SequentialReader()
@@ -59,8 +60,13 @@ def _load_awsim_image_raw_messages(awsim_input_bag_path):
         if topic_name == '/sensing/camera/image_raw':
             msg = deserialize_message(data, Image)
             awsim_image_raw_msgs_list.append(msg)
+    
+    if start_index >= len(awsim_image_raw_msgs_list):
+        raise ValueError(f"Start index {start_index} is out of range. Total images: {len(awsim_image_raw_msgs_list)}")
+    
     print(f"Loaded {len(awsim_image_raw_msgs_list)} messages from /sensing/camera/image_raw in input AWSIM rosbag.")
-    return awsim_image_raw_msgs_list
+    print(f"Starting from index {start_index}")
+    return awsim_image_raw_msgs_list[start_index:]
 
 def replace_camera0_image_sequentially(original_image_msg, awsim_image_raw_iterator, target_image_size, bridge):
     """
@@ -128,16 +134,17 @@ def write_to_rosbag(writer, topic: str, msg, timestamp: Time):
     ros_timestamp = int(timestamp.sec * 1e9) + timestamp.nanosec
     writer.write(topic, serialize_message(msg), ros_timestamp)
 
-def process_rosbags(nuscenes_rosbag_path, input_awsim_rosbag_path, output_awsim_rosbag_path):
+def process_rosbags(nuscenes_rosbag_path, input_awsim_rosbag_path, output_awsim_rosbag_path, start_index=0):
     """
     Nuscenes rosbagの画像をinput-awsim-rosbagの画像で順番に置き換え、他のカメラ画像を黒塗りにして保存する
+    start_index: AWSIMのrosbagから開始する画像のインデックス
     """
     bridge = CvBridge()
 
     try:
         # ターゲット画像サイズとAWSIM画像を事前に読み込む
         target_image_size = _get_target_image_size(nuscenes_rosbag_path)
-        awsim_image_raw_msgs_list = _load_awsim_image_raw_messages(input_awsim_rosbag_path)
+        awsim_image_raw_msgs_list = _load_awsim_image_raw_messages(input_awsim_rosbag_path, start_index)
         
         # AWSIM画像リストをイテレータに変換
         awsim_image_raw_iterator = iter(awsim_image_raw_msgs_list)
@@ -258,7 +265,9 @@ if __name__ == '__main__':
                         help="Path to the input AWSIM rosbag file containing /sensing/camera/image_raw.")
     parser.add_argument('--output-awsim-rosbag', type=str, required=True,
                         help="Path to the output AWSIM rosbag file.")
+    parser.add_argument('--start-index', type=int, default=0,
+                        help="Index of the first image to use from AWSIM rosbag (default: 0)")
 
     args = parser.parse_args()
 
-    process_rosbags(args.nuscenes_rosbag, args.input_awsim_rosbag, args.output_awsim_rosbag)
+    process_rosbags(args.nuscenes_rosbag, args.input_awsim_rosbag, args.output_awsim_rosbag, args.start_index)
