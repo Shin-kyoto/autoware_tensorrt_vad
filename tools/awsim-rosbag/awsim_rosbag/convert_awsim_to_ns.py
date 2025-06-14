@@ -68,6 +68,74 @@ def _load_awsim_image_raw_messages(awsim_input_bag_path, start_index=0):
     print(f"Starting from index {start_index}")
     return awsim_image_raw_msgs_list[start_index:]
 
+def _load_awsim_tf_static_message(awsim_input_bag_path):
+    """
+    Input AWSIM rosbagから/tf_staticメッセージを読み込む。
+    """
+    reader = rosbag2_py.SequentialReader()
+    storage_options = rosbag2_py._storage.StorageOptions(
+        uri=awsim_input_bag_path,
+        storage_id="sqlite3"
+    )
+    converter_options = rosbag2_py._storage.ConverterOptions(
+        input_serialization_format="cdr",
+        output_serialization_format="cdr"
+    )
+    reader.open(storage_options, converter_options)
+
+    while reader.has_next():
+        topic_name, data, timestamp_ns = reader.read_next()
+        if topic_name == '/tf_static':
+            msg = deserialize_message(data, TFMessage)
+            return msg
+    
+    raise ValueError("Error: Could not find /tf_static message in AWSIM input bag.")
+
+def _load_ns_tf_static_message(ns_bag_path):
+    """
+    Nuscenes rosbagから/tf_staticメッセージを読み込む。
+    """
+    reader = rosbag2_py.SequentialReader()
+    storage_options = rosbag2_py._storage.StorageOptions(
+        uri=ns_bag_path,
+        storage_id="sqlite3"
+    )
+    converter_options = rosbag2_py._storage.ConverterOptions(
+        input_serialization_format="cdr",
+        output_serialization_format="cdr"
+    )
+    reader.open(storage_options, converter_options)
+
+    while reader.has_next():
+        topic_name, data, timestamp_ns = reader.read_next()
+        if topic_name == '/tf_static':
+            msg = deserialize_message(data, TFMessage)
+            return msg
+    
+    raise ValueError("Error: Could not find /tf_static message in nuscenes rosbag.")
+
+def _merge_tf_static_messages(ns_tf_static_msg, awsim_tf_static_msg):
+    """
+    nuscenesのtf_staticメッセージのframeとtimestampを保持しつつ、
+    変換行列の値のみをAWSIMのものに置き換える。
+    """
+    # AWSIMの変換行列を辞書形式で保存
+    awsim_transforms = {}
+    for transform in awsim_tf_static_msg.transforms:
+        key = (transform.header.frame_id, transform.child_frame_id)
+        awsim_transforms[key] = transform.transform
+
+    # nuscenesのメッセージをコピーし、変換行列のみを置き換え
+    merged_msg = TFMessage()
+    for transform in ns_tf_static_msg.transforms:
+        key = (transform.header.frame_id, transform.child_frame_id)
+        if key in awsim_transforms:
+            # 変換行列のみをAWSIMのものに置き換え
+            transform.transform = awsim_transforms[key]
+        merged_msg.transforms.append(transform)
+
+    return merged_msg
+
 def replace_camera0_image_sequentially(original_image_msg, awsim_image_raw_iterator, target_image_size, bridge):
     """
     /sensing/camera/camera0/image_rect_color/compressedの画像をAWSIMの/sensing/camera/image_rawの画像で順番に置き換える。
@@ -145,6 +213,11 @@ def process_rosbags(nuscenes_rosbag_path, input_awsim_rosbag_path, output_awsim_
         # ターゲット画像サイズとAWSIM画像を事前に読み込む
         target_image_size = _get_target_image_size(nuscenes_rosbag_path)
         awsim_image_raw_msgs_list = _load_awsim_image_raw_messages(input_awsim_rosbag_path, start_index)
+        awsim_tf_static_msg = _load_awsim_tf_static_message(input_awsim_rosbag_path)
+        ns_tf_static_msg = _load_ns_tf_static_message(nuscenes_rosbag_path)
+        
+        # tf_staticメッセージをマージ
+        merged_tf_static_msg = _merge_tf_static_messages(ns_tf_static_msg, awsim_tf_static_msg)
         
         # AWSIM画像リストをイテレータに変換
         awsim_image_raw_iterator = iter(awsim_image_raw_msgs_list)
@@ -244,11 +317,12 @@ def process_rosbags(nuscenes_rosbag_path, input_awsim_rosbag_path, output_awsim_
                 msg = deserialize_message(data, Odometry)
                 write_to_rosbag(writer, topic_name, msg, timestamp)
             elif topic_name == '/tf_static':
-                msg = deserialize_message(data, TFMessage)
-                write_to_rosbag(writer, topic_name, msg, timestamp)
+                # マージしたtf_staticメッセージを使用
+                write_to_rosbag(writer, topic_name, merged_tf_static_msg, timestamp)
             else:
-                print(f"Warning: Unknown topic {topic_name}, skipping...")
-                continue
+                # その他のメッセージはそのまま書き込み
+                msg = deserialize_message(data, get_message_type(topic_name))
+                write_to_rosbag(writer, topic_name, msg, timestamp)
 
         print(f"Successfully processed and saved to {output_awsim_rosbag_path}")
 
