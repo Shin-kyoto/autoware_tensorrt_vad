@@ -202,6 +202,41 @@ def write_to_rosbag(writer, topic: str, msg, timestamp: Time):
     ros_timestamp = int(timestamp.sec * 1e9) + timestamp.nanosec
     writer.write(topic, serialize_message(msg), ros_timestamp)
 
+def _load_awsim_camera0_info(awsim_input_bag_path):
+    """
+    AWSIM rosbagから/sensing/camera/camera0/camera_infoメッセージを取得する。
+    """
+    reader = rosbag2_py.SequentialReader()
+    storage_options = rosbag2_py._storage.StorageOptions(
+        uri=awsim_input_bag_path,
+        storage_id="sqlite3"
+    )
+    converter_options = rosbag2_py._storage.ConverterOptions(
+        input_serialization_format="cdr",
+        output_serialization_format="cdr"
+    )
+    reader.open(storage_options, converter_options)
+
+    while reader.has_next():
+        topic_name, data, timestamp_ns = reader.read_next()
+        if topic_name == '/sensing/camera/camera_info':
+            msg = deserialize_message(data, CameraInfo)
+            return msg
+    raise ValueError("Error: Could not find /sensing/camera/camera_info in AWSIM input bag.")
+
+def _overwrite_camera_info_matrix(ns_camera_info_msg, awsim_camera_info_msg):
+    """
+    nuScenesのcamera_infoのframeやtimestampはそのまま、行列部分のみAWSIMの値で上書きする。
+    """
+    ns_camera_info_msg.k = awsim_camera_info_msg.k
+    ns_camera_info_msg.p = awsim_camera_info_msg.p
+    ns_camera_info_msg.d = awsim_camera_info_msg.d
+    ns_camera_info_msg.r = awsim_camera_info_msg.r
+    ns_camera_info_msg.distortion_model = awsim_camera_info_msg.distortion_model
+    ns_camera_info_msg.height = awsim_camera_info_msg.height
+    ns_camera_info_msg.width = awsim_camera_info_msg.width
+    return ns_camera_info_msg
+
 def process_rosbags(nuscenes_rosbag_path, input_awsim_rosbag_path, output_awsim_rosbag_path, start_index=0):
     """
     Nuscenes rosbagの画像をinput-awsim-rosbagの画像で順番に置き換え、他のカメラ画像を黒塗りにして保存する
@@ -215,6 +250,7 @@ def process_rosbags(nuscenes_rosbag_path, input_awsim_rosbag_path, output_awsim_
         awsim_image_raw_msgs_list = _load_awsim_image_raw_messages(input_awsim_rosbag_path, start_index)
         awsim_tf_static_msg = _load_awsim_tf_static_message(input_awsim_rosbag_path)
         ns_tf_static_msg = _load_ns_tf_static_message(nuscenes_rosbag_path)
+        awsim_camera0_info_msg = _load_awsim_camera0_info(input_awsim_rosbag_path)
         
         # tf_staticメッセージをマージ
         merged_tf_static_msg = _merge_tf_static_messages(ns_tf_static_msg, awsim_tf_static_msg)
@@ -304,6 +340,10 @@ def process_rosbags(nuscenes_rosbag_path, input_awsim_rosbag_path, output_awsim_
                     # 他のカメラ画像を黒塗り化
                     new_msg = create_blackout_image(msg, target_image_size, bridge)
                     write_to_rosbag(writer, topic_name, new_msg, timestamp)
+            elif topic_name == '/sensing/camera/camera0/camera_info':
+                msg = deserialize_message(data, CameraInfo)
+                new_msg = _overwrite_camera_info_matrix(msg, awsim_camera0_info_msg)
+                write_to_rosbag(writer, topic_name, new_msg, timestamp)
             elif topic_name.endswith('/camera_info'):
                 msg = deserialize_message(data, CameraInfo)
                 write_to_rosbag(writer, topic_name, msg, timestamp)
