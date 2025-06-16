@@ -8,6 +8,14 @@ from rclpy.serialization import serialize_message, deserialize_message
 from builtin_interfaces.msg import Time
 from nav_msgs.msg import Odometry
 from tf2_msgs.msg import TFMessage
+import logging
+
+# ロギングの設定
+logging.basicConfig(
+    filename='./data/log.txt',
+    level=logging.INFO,
+    format='%(message)s'
+)
 
 def _get_target_image_size(nuscenes_bag_path):
     """
@@ -132,6 +140,13 @@ def _merge_tf_static_messages(ns_tf_static_msg, awsim_tf_static_msg):
         if key in awsim_transforms:
             # 変換行列のみをAWSIMのものに置き換え
             transform.transform = awsim_transforms[key]
+            # base_linkからcamera0/camera_optical_linkへの変換行列をログ出力
+            if transform.header.frame_id == 'base_link' and transform.child_frame_id == 'camera0/camera_optical_link':
+                logging.info("=== TF Static Transformation Matrix ===")
+                logging.info(f"Frame: {transform.header.frame_id} -> {transform.child_frame_id}")
+                logging.info(f"Translation: x={transform.transform.translation.x}, y={transform.transform.translation.y}, z={transform.transform.translation.z}")
+                logging.info(f"Rotation: x={transform.transform.rotation.x}, y={transform.transform.rotation.y}, z={transform.transform.rotation.z}, w={transform.transform.rotation.w}")
+                logging.info("=====================================")
         merged_msg.transforms.append(transform)
 
     return merged_msg
@@ -235,6 +250,28 @@ def _overwrite_camera_info_matrix(ns_camera_info_msg, awsim_camera_info_msg):
     ns_camera_info_msg.distortion_model = awsim_camera_info_msg.distortion_model
     ns_camera_info_msg.height = awsim_camera_info_msg.height
     ns_camera_info_msg.width = awsim_camera_info_msg.width
+
+    # camera_infoの座標変換行列をログ出力
+    logging.info("\n=== Camera Info Matrix ===")
+    logging.info("Intrinsic Matrix (K):")
+    logging.info(f"[[{ns_camera_info_msg.k[0]}, {ns_camera_info_msg.k[1]}, {ns_camera_info_msg.k[2]}],")
+    logging.info(f" [{ns_camera_info_msg.k[3]}, {ns_camera_info_msg.k[4]}, {ns_camera_info_msg.k[5]}],")
+    logging.info(f" [{ns_camera_info_msg.k[6]}, {ns_camera_info_msg.k[7]}, {ns_camera_info_msg.k[8]}]]")
+    
+    logging.info("\nProjection Matrix (P):")
+    logging.info(f"[[{ns_camera_info_msg.p[0]}, {ns_camera_info_msg.p[1]}, {ns_camera_info_msg.p[2]}, {ns_camera_info_msg.p[3]}],")
+    logging.info(f" [{ns_camera_info_msg.p[4]}, {ns_camera_info_msg.p[5]}, {ns_camera_info_msg.p[6]}, {ns_camera_info_msg.p[7]}],")
+    logging.info(f" [{ns_camera_info_msg.p[8]}, {ns_camera_info_msg.p[9]}, {ns_camera_info_msg.p[10]}, {ns_camera_info_msg.p[11]}]]")
+    
+    logging.info("\nDistortion Coefficients (D):")
+    logging.info(f"[{ns_camera_info_msg.d[0]}, {ns_camera_info_msg.d[1]}, {ns_camera_info_msg.d[2]}, {ns_camera_info_msg.d[3]}, {ns_camera_info_msg.d[4]}]")
+    
+    logging.info("\nRectification Matrix (R):")
+    logging.info(f"[[{ns_camera_info_msg.r[0]}, {ns_camera_info_msg.r[1]}, {ns_camera_info_msg.r[2]}],")
+    logging.info(f" [{ns_camera_info_msg.r[3]}, {ns_camera_info_msg.r[4]}, {ns_camera_info_msg.r[5]}],")
+    logging.info(f" [{ns_camera_info_msg.r[6]}, {ns_camera_info_msg.r[7]}, {ns_camera_info_msg.r[8]}]]")
+    logging.info("========================\n")
+
     return ns_camera_info_msg
 
 def process_rosbags(nuscenes_rosbag_path, input_awsim_rosbag_path, output_awsim_rosbag_path, start_index=0):
