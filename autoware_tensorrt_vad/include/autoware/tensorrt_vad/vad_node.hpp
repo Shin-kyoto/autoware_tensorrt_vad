@@ -15,7 +15,8 @@
 #ifndef AUTOWARE_TENSORRT_VAD_VAD_NODE_HPP_
 #define AUTOWARE_TENSORRT_VAD_VAD_NODE_HPP_
 
-#include "autoware/tensorrt_vad/vad_trt.hpp"
+#include "autoware/tensorrt_vad/vad_model.hpp"
+#include "ros_vad_logger.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
@@ -35,11 +36,10 @@
 // #include <cuda_runtime.h>
 // #include <NvInfer.h>
 // #include <stb/stb_image.h>
-// #include <sensor_msgs/msg/image.hpp>
-// #include <autoware_perception_msgs/msg/detected_objects.hpp>
 
 namespace autoware::tensorrt_vad
 {
+
 class VadNode : public rclcpp::Node
 {
 public:
@@ -55,8 +55,8 @@ private:
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_{tf_buffer_};
 
-  // VAD model
-  std::unique_ptr<VadModel> vad_model_ptr_{};
+  // VAD model - 具体的なロガー型を指定
+  std::unique_ptr<VadModel<RosVadLogger>> vad_model_ptr_{};
 
   // VAD input topic
   // std::unique_ptr<VadTopicData> vad_topic_data_ptr_{};
