@@ -37,8 +37,11 @@ VadNode::VadNode(const rclcpp::NodeOptions & options) : Node("vad_node", options
   // Publishers の初期化
   trajectory_pub_ = this->create_publisher<autoware_planning_msgs::msg::Trajectory>("~/output/trajectory", rclcpp::QoS(1));
 
-  // VADモデルの初期化
-  vad_model_ptr_ = std::make_unique<VadModel>();
+  // VADモデルの初期化 - 一時的にコメントアウト
+  // TODO: 適切な設定ファイルとロガーを用意してから初期化
+  // auto logger = std::make_shared<RosVadLogger>();
+  // VadConfig config;
+  // vad_model_ptr_ = std::make_unique<VadModel<RosVadLogger>>(config, logger);
 
   RCLCPP_INFO(this->get_logger(), "VAD Node initialized");
 }
