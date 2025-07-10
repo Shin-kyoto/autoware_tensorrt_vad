@@ -186,7 +186,7 @@ def _merge_tf_static_messages(ns_tf_static_msg, awsim_tf_static_msg):
         if transform.child_frame_id == 'camera0/camera_optical_link' and transform.header.frame_id == 'base_link':
             if base_to_camera_transform is not None:
                 # 目標の並進と回転（tf2_echoで表示される値）
-                target_translation = np.array([0.0, -0.7, -0.8])
+                target_translation = np.array([0.0, 0.7, -0.8])
                 target_rotation_quat = np.array([0.487, -0.486, 0.507, 0.519])
                 
                 # 逆変換の並進を計算
